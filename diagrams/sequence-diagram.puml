@@ -1,152 +1,301 @@
-@startuml UnoMas_DiagramaSecuencia_CrearYUnirse
+@startuml UnoMas_DiagramaSecuencia@startuml UnoMas_DiagramaSecuencia_CrearYUnirse
 
-title Sistema Uno Mas - Diagrama de Secuencia\nCrear Partido y Unirse
 
-actor "Usuario\nOrganizador" as Org
-actor "Usuario\nJugador" as Player
+
+title Sistema Uno Mas - Flujo Completo de Partidotitle Sistema Uno Mas - Diagrama de Secuencia\nCrear Partido y Unirse
+
+
+
+actor Usuario1 as "Usuario\n(Organizador)"actor "Usuario\nOrganizador" as Org
+
+actor Usuario2 as "Jugador"actor "Usuario\nJugador" as Player
+
 participant "PartidoController" as PC
-participant "PartidoService" as PS
-participant "PartidoFactory" as PF
-participant "Partido" as P
-participant "EstadoPartido" as EP
-participant "NotificacionObserver" as NO
-participant "EmailAdapter" as EA
-participant "PushAdapter" as PA
-database "PartidoRepository" as PR
 
-== Crear Partido ==
+participant Controller as "PartidoController"participant "PartidoService" as PS
 
-Org -> PC : POST /api/partidos\n(PartidoCreateDTO)
-activate PC
+participant Service as "PartidoService"participant "PartidoFactory" as PF
 
-PC -> PS : crearPartido(dto)
-activate PS
+participant Factory as "PartidoFactory"participant "Partido" as P
 
-PS -> PS : obtenerUsuarioEntity(organizadorId)
+participant Partidoparticipant "EstadoPartido" as EP
 
-note right of PS
-  <b>Factory Pattern</b>
-  Se usa el factory para
-  crear el partido
+participant State as "EstadoPartido"participant "NotificacionObserver" as NO
+
+participant Strategy as "EmparejamientoStrategy"participant "EmailAdapter" as EA
+
+participant Observer as "NotificationObserver"participant "PushAdapter" as PA
+
+participant Adapter as "EmailAdapter"database "PartidoRepository" as PR
+
+
+
+== Creación de Partido ==== Crear Partido ==
+
+
+
+Usuario1 -> Controller: POST /api/partidosOrg -> PC : POST /api/partidos\n(PartidoCreateDTO)
+
+activate Controlleractivate PC
+
+
+
+Controller -> Service: crearPartido(dto)PC -> PS : crearPartido(dto)
+
+activate Serviceactivate PS
+
+
+
+Service -> Factory: crearPartido(...)PS -> PS : obtenerUsuarioEntity(organizadorId)
+
+activate Factory
+
+Factory -> Partido: new Partido()note right of PS
+
+Factory -> Partido: setEstado(NecesitamosJugadoresState)  <b>Factory Pattern</b>
+
+Factory --> Service: partido  Se usa el factory para
+
+deactivate Factory  crear el partido
+
 end note
 
-PS -> PF : crearPartido(tipoDeporte, organizador,\nfechaHora, ubicacion, direccion)
-activate PF
+Service -> Partido: agregarObserver(EmailObserver)
+
+Service -> Service: partidoRepository.save()PS -> PF : crearPartido(tipoDeporte, organizador,\nfechaHora, ubicacion, direccion)
+
+Service --> Controller: PartidoResponseDTOactivate PF
+
+deactivate Service
 
 PF -> P : new Partido()
-activate P
+
+Controller --> Usuario1: 201 Createdactivate P
+
+deactivate Controller
 
 PF -> P : setEstado(new NecesitamosJugadoresState())
-P -> P : estadoActual = "NECESITAMOS_JUGADORES"
 
-PF --> PS : partido
-deactivate PF
+== Usuario se Une ==P -> P : estadoActual = "NECESITAMOS_JUGADORES"
 
-PS -> PR : save(partido)
-activate PR
+
+
+Usuario2 -> Controller: POST /api/partidos/1/unirsePF --> PS : partido
+
+activate Controllerdeactivate PF
+
+
+
+Controller -> Service: unirseAPartido(1, usuarioId)PS -> PR : save(partido)
+
+activate Serviceactivate PR
+
 PR --> PS : partidoGuardado
-deactivate PR
 
-note right of PS
-  <b>Observer Pattern</b>
+Service -> Strategy: esCompatible(usuario, partido)deactivate PR
+
+activate Strategy
+
+Strategy --> Service: truenote right of PS
+
+deactivate Strategy  <b>Observer Pattern</b>
+
   Se configuran los observers
-  para notificaciones
-end note
 
-PS -> P : agregarObserver(emailObserver)
-PS -> P : agregarObserver(pushObserver)
+Service -> Partido: agregarJugador(usuario)  para notificaciones
 
-PS -> P : notificarObservadores("Nuevo partido creado")
-activate P
-P -> NO : actualizar(partido, mensaje)
-activate NO
-NO -> EA : enviarNotificacion(...)
-NO -> PA : enviarNotificacion(...)
-deactivate NO
-deactivate P
+activate Partidoend note
 
-PS --> PC : PartidoResponseDTO
+
+
+Partido -> State: equipoCompleto(partido)PS -> P : agregarObserver(emailObserver)
+
+activate StatePS -> P : agregarObserver(pushObserver)
+
+
+
+alt Equipo CompletoPS -> P : notificarObservadores("Nuevo partido creado")
+
+    State -> Partido: cambiarEstado(PartidoArmadoState)activate P
+
+    Partido -> Observer: notificarObservadores("Equipo completo")P -> NO : actualizar(partido, mensaje)
+
+    activate Observeractivate NO
+
+    Observer -> Adapter: enviarNotificacion(...)NO -> EA : enviarNotificacion(...)
+
+    activate AdapterNO -> PA : enviarNotificacion(...)
+
+    Adapter --> Observer: enviadodeactivate NO
+
+    deactivate Adapterdeactivate P
+
+    deactivate Observer
+
+endPS --> PC : PartidoResponseDTO
+
 deactivate PS
 
-PC --> Org : 201 Created\n(Partido creado)
-deactivate PC
+State --> Partido
+
+deactivate StatePC --> Org : 201 Created\n(Partido creado)
+
+Partido --> Servicedeactivate PC
+
+deactivate Partido
 
 == Usuario se Une al Partido ==
 
-Player -> PC : POST /api/partidos/1/unirse\n{"usuarioId": 2}
+Service --> Controller: PartidoResponseDTO
+
+deactivate ServicePlayer -> PC : POST /api/partidos/1/unirse\n{"usuarioId": 2}
+
 activate PC
 
-PC -> PS : unirseAPartido(1, 2)
+Controller --> Usuario2: 200 OK
+
+deactivate ControllerPC -> PS : unirseAPartido(1, 2)
+
 activate PS
+
+== Confirmación y Inicio ==
 
 PS -> PR : findById(1)
-activate PR
-PR --> PS : partido
-deactivate PR
 
-PS -> PS : obtenerUsuarioEntity(2)
+Usuario1 -> Controller: PUT /api/partidos/1/confirmaractivate PR
 
-note right of PS
-  <b>Strategy Pattern</b>
-  Se verifica compatibilidad
-  usando estrategia
-end note
+activate ControllerPR --> PS : partido
 
-PS -> PS : nivelHabilidadStrategy.esCompatible(usuario, partido)
+Controller -> Service: confirmarPartido(1)deactivate PR
 
-alt Usuario Compatible
-    PS -> P : agregarJugador(usuario)
-    activate P
+activate Service
+
+Service -> Partido: confirmar()PS -> PS : obtenerUsuarioEntity(2)
+
+activate Partido
+
+Partido -> State: confirmar(partido)note right of PS
+
+activate State  <b>Strategy Pattern</b>
+
+State -> Partido: cambiarEstado(ConfirmadoState)  Se verifica compatibilidad
+
+State --> Partido  usando estrategia
+
+deactivate Stateend note
+
+Partido --> Service
+
+deactivate PartidoPS -> PS : nivelHabilidadStrategy.esCompatible(usuario, partido)
+
+Service --> Controller: PartidoResponseDTO
+
+deactivate Servicealt Usuario Compatible
+
+Controller --> Usuario1: 200 OK    PS -> P : agregarJugador(usuario)
+
+deactivate Controller    activate P
+
     
-    P -> P : jugadores.add(usuario)
-    
-    alt Equipo se Completó
-        note right of P
-          <b>State Pattern</b>
+
+note over Service    P -> P : jugadores.add(usuario)
+
+  PartidoSchedulerService    
+
+  verifica cada minuto    alt Equipo se Completó
+
+  si es hora de iniciar        note right of P
+
+end note          <b>State Pattern</b>
+
           Cambio automático de estado
-          cuando se completa el equipo
-        end note
-        
-        P -> EP : equipoCompleto(partido)
-        activate EP
-        EP -> P : cambiarEstado(new PartidoArmadoState())
-        P -> P : estado = PartidoArmadoState
-        P -> P : estadoActual = "PARTIDO_ARMADO"
-        deactivate EP
-        
+
+Service -> Partido: iniciar()          cuando se completa el equipo
+
+activate Partido        end note
+
+Partido -> State: iniciar(partido)        
+
+activate State        P -> EP : equipoCompleto(partido)
+
+State -> Partido: cambiarEstado(EnJuegoState)        activate EP
+
+Partido -> Observer: notificarObservadores("Iniciado")        EP -> P : cambiarEstado(new PartidoArmadoState())
+
+State --> Partido        P -> P : estado = PartidoArmadoState
+
+deactivate State        P -> P : estadoActual = "PARTIDO_ARMADO"
+
+Partido --> Service        deactivate EP
+
+deactivate Partido        
+
         P -> P : notificarObservadores("Equipo completo!")
-        P -> NO : actualizar(partido, "Equipo completo")
+
+== Finalización ==        P -> NO : actualizar(partido, "Equipo completo")
+
         activate NO
-        NO -> EA : enviarNotificacion(todos los jugadores)
-        NO -> PA : enviarNotificacion(todos los jugadores)
-        deactivate NO
-    end
-    
-    deactivate P
-    
-    PS -> PR : save(partido)
-    activate PR
-    PR --> PS : partidoActualizado
-    deactivate PR
-    
-    PS --> PC : PartidoResponseDTO
-    deactivate PS
-    
-    PC --> Player : 200 OK\n(Te uniste al partido)
-    deactivate PC
-    
+
+Usuario1 -> Controller: PUT /api/partidos/1/finalizar        NO -> EA : enviarNotificacion(todos los jugadores)
+
+activate Controller        NO -> PA : enviarNotificacion(todos los jugadores)
+
+Controller -> Service: finalizarPartido(1)        deactivate NO
+
+activate Service    end
+
+Service -> Partido: finalizar()    
+
+activate Partido    deactivate P
+
+Partido -> State: finalizar(partido)    
+
+activate State    PS -> PR : save(partido)
+
+State -> Partido: cambiarEstado(FinalizadoState)    activate PR
+
+Partido -> Observer: notificarObservadores("Finalizado")    PR --> PS : partidoActualizado
+
+State --> Partido    deactivate PR
+
+deactivate State    
+
+Partido --> Service    PS --> PC : PartidoResponseDTO
+
+deactivate Partido    deactivate PS
+
+Service --> Controller: PartidoResponseDTO    
+
+deactivate Service    PC --> Player : 200 OK\n(Te uniste al partido)
+
+Controller --> Usuario1: 200 OK    deactivate PC
+
+deactivate Controller    
+
 else Usuario No Compatible
-    PS --> PC : IllegalArgumentException
-    PC --> Player : 400 Bad Request\n(No cumples requisitos)
-end
 
-== Confirmar Partido ==
+legend right    PS --> PC : IllegalArgumentException
 
-Org -> PC : PUT /api/partidos/1/confirmar
-activate PC
+  <b>Patrones demostrados:</b>    PC --> Player : 400 Bad Request\n(No cumples requisitos)
+
+  • Factory (crear partido)end
+
+  • State (transiciones)
+
+  • Strategy (compatibilidad)== Confirmar Partido ==
+
+  • Observer (notificaciones)
+
+  • Adapter (email/push)Org -> PC : PUT /api/partidos/1/confirmar
+
+  • MVC (arquitectura)activate PC
+
+endlegend
 
 PC -> PS : confirmarPartido(1)
-activate PS
+
+@endumlactivate PS
+
 
 PS -> PR : findById(1)
 activate PR
