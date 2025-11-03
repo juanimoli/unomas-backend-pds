@@ -10,14 +10,33 @@ if [ -d "/opt/homebrew/bin" ] && [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; the
     export PATH="/opt/homebrew/bin:$PATH"
 fi
 
-JAR_FILE="/Users/juanimoli/Development/uno-mas-tp-adoo/target/unomas-backend-1.0.0.jar"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JAR_FILE="$PROJECT_DIR/target/unomas-backend-1.0.0.jar"
+MVNW="$PROJECT_DIR/mvnw"
+
+# Detectar Maven
+if [ -x "$MVNW" ]; then
+    MVN_CMD="$MVNW"
+    echo "✓ Usando Maven Wrapper"
+elif command -v mvn &> /dev/null; then
+    MVN_CMD="mvn"
+    echo "✓ Usando Maven del sistema"
+else
+    echo "❌ Maven no está disponible"
+    echo ""
+    echo "Por favor ejecuta primero:"
+    echo "  ./check-requirements.sh"
+    exit 1
+fi
+
+echo ""
 
 # Verificar si el JAR existe
 if [ ! -f "$JAR_FILE" ]; then
     echo "⚠️  El proyecto no está compilado. Compilando..."
     echo ""
-    cd /Users/juanimoli/Development/uno-mas-tp-adoo
-    mvn clean package -DskipTests
+    cd "$PROJECT_DIR"
+    "$MVN_CMD" clean package -DskipTests
     
     if [ $? -ne 0 ]; then
         echo ""

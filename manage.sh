@@ -9,6 +9,22 @@ if [ -d "/opt/homebrew/bin" ] && [[ ":$PATH:" != *":/opt/homebrew/bin:"* ]]; the
     export PATH="/opt/homebrew/bin:$PATH"
 fi
 
+# Detectar Maven Wrapper
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MVNW="$PROJECT_DIR/mvnw"
+
+# Usar Maven Wrapper si existe, sino usar mvn del sistema
+if [ -x "$MVNW" ]; then
+    MVN_CMD="$MVNW"
+    MVN_TYPE="Maven Wrapper"
+elif command -v mvn &> /dev/null; then
+    MVN_CMD="mvn"
+    MVN_TYPE="Maven del sistema"
+else
+    MVN_CMD=""
+    MVN_TYPE="No disponible"
+fi
+
 # Colores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,7 +35,6 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Variables
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="$PROJECT_DIR/target"
 JAR_FILE="$TARGET_DIR/unomas-backend-1.0.0.jar"
 PID_FILE="$PROJECT_DIR/.backend.pid"
@@ -62,23 +77,34 @@ check_requirements() {
         print_error "Java no está instalado"
         missing_requirements=1
     else
-        print_success "Java encontrado: $(java -version 2>&1 | head -n 1)"
+        JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
+        JAVA_MAJOR_VERSION=$(echo $JAVA_VERSION | cut -d'.' -f1)
+        
+        if [ "$JAVA_MAJOR_VERSION" -ge 17 ]; then
+            print_success "Java $JAVA_VERSION encontrado"
+        else
+            print_error "Java $JAVA_VERSION encontrado, pero se requiere Java 17+"
+            missing_requirements=1
+        fi
     fi
     
-    if ! command -v mvn &> /dev/null; then
-        print_error "Maven no está instalado"
+    if [ -z "$MVN_CMD" ]; then
+        print_error "Maven no está disponible"
         missing_requirements=1
     else
-        print_success "Maven encontrado: $(mvn -v | head -n 1)"
+        print_success "$MVN_TYPE encontrado"
     fi
     
     if [ $missing_requirements -eq 1 ]; then
         echo ""
-        print_error "Faltan requisitos. Por favor instala:"
-        echo "  - Java 17+: brew install openjdk@17"
-        echo "  - Maven 3.6+: brew install maven"
+        print_error "Faltan requisitos. Ejecuta el script de verificación:"
+        echo "  ./check-requirements.sh"
         echo ""
-        print_info "Después de instalar Maven, recarga el terminal:"
+        print_info "O instala manualmente:"
+        echo "  - Java 17+: brew install openjdk@17"
+        echo "  - Maven Wrapper está incluido en el proyecto"
+        echo ""
+        print_info "Después de instalar, recarga el terminal:"
         echo "  source ~/.zshrc"
         return 1
     fi
@@ -87,14 +113,12 @@ check_requirements() {
 }
 
 check_maven() {
-    if ! command -v mvn &> /dev/null; then
-        print_error "Maven no está instalado o no está en el PATH"
+    if [ -z "$MVN_CMD" ]; then
+        print_error "Maven no está disponible"
         echo ""
-        print_info "Para instalar Maven:"
-        echo "  brew install maven"
-        echo ""
-        print_info "Después de instalar, recarga el terminal:"
-        echo "  source ~/.zshrc"
+        print_info "Maven Wrapper debería estar incluido en el proyecto."
+        print_info "Verifica los requisitos ejecutando:"
+        echo "  ./check-requirements.sh"
         echo ""
         read -p "Presiona Enter para continuar..."
         return 1
@@ -145,12 +169,13 @@ compile_project() {
         return 1
     fi
     
+    print_info "Usando: $MVN_TYPE"
     print_info "Limpiando compilaciones previas..."
-    mvn clean
+    "$MVN_CMD" clean
     
     echo ""
     print_info "Compilando proyecto (omitiendo tests)..."
-    mvn package -DskipTests
+    "$MVN_CMD" package -DskipTests
     
     if [ $? -eq 0 ]; then
         echo ""
@@ -173,12 +198,13 @@ compile_with_tests() {
         return 1
     fi
     
+    print_info "Usando: $MVN_TYPE"
     print_info "Limpiando compilaciones previas..."
-    mvn clean
+    "$MVN_CMD" clean
     
     echo ""
     print_info "Compilando y ejecutando tests..."
-    mvn package
+    "$MVN_CMD" package
     
     if [ $? -eq 0 ]; then
         echo ""
@@ -203,9 +229,9 @@ clean_project() {
         sleep 2
     fi
     
-    if command -v mvn &> /dev/null; then
-        print_info "Eliminando archivos compilados con Maven..."
-        mvn clean
+    if [ -n "$MVN_CMD" ]; then
+        print_info "Eliminando archivos compilados con $MVN_TYPE..."
+        "$MVN_CMD" clean
     else
         print_info "Maven no disponible, eliminando manualmente..."
         if [ -d "$TARGET_DIR" ]; then
@@ -363,52 +389,57 @@ show_status() {
 show_logs() {
     if [ ! -f "$LOG_FILE" ]; then
         print_error "No hay archivo de logs"
+        echo ""
+        read -p "Presiona Enter para continuar..."
         return 1
     fi
     
-    print_header
-    echo -e "${BLUE}═══ Logs del Backend ═══${NC}"
-    echo ""
-    
-    echo "1. Ver todas las líneas"
-    echo "2. Ver últimas 50 líneas"
-    echo "3. Ver últimas 100 líneas"
-    echo "4. Seguir logs en tiempo real"
-    echo "5. Buscar en logs"
-    echo "0. Volver"
-    echo ""
-    
-    read -p "Selecciona una opción: " log_option
-    
-    case $log_option in
-        1)
-            less "$LOG_FILE"
-            ;;
-        2)
-            tail -n 50 "$LOG_FILE"
-            echo ""
-            read -p "Presiona Enter para continuar..."
-            ;;
-        3)
-            tail -n 100 "$LOG_FILE"
-            echo ""
-            read -p "Presiona Enter para continuar..."
-            ;;
-        4)
-            print_info "Mostrando logs en tiempo real (Ctrl+C para salir)..."
-            tail -f "$LOG_FILE"
-            ;;
-        5)
-            read -p "Ingresa texto a buscar: " search_text
-            grep -i --color "$search_text" "$LOG_FILE" | less -R
-            ;;
-        0)
-            return 0
-            ;;
-        *)
-            print_error "Opción inválida"
-            ;;
-    esac
+    while true; do
+        print_header
+        echo -e "${BLUE}═══ Logs del Backend ═══${NC}"
+        echo ""
+        
+        echo "1. Ver todas las líneas"
+        echo "2. Ver últimas 50 líneas"
+        echo "3. Ver últimas 100 líneas"
+        echo "4. Seguir logs en tiempo real"
+        echo "5. Buscar en logs"
+        echo "0. Volver al menú principal"
+        echo ""
+        
+        read -p "Selecciona una opción: " log_option
+        
+        case $log_option in
+            1)
+                less "$LOG_FILE"
+                ;;
+            2)
+                tail -n 50 "$LOG_FILE"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            3)
+                tail -n 100 "$LOG_FILE"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            4)
+                print_info "Mostrando logs en tiempo real (Ctrl+C para salir)..."
+                tail -f "$LOG_FILE"
+                ;;
+            5)
+                read -p "Ingresa texto a buscar: " search_text
+                grep -i --color "$search_text" "$LOG_FILE" | less -R
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                print_error "Opción inválida"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # ========================================
@@ -424,8 +455,9 @@ run_tests() {
         return 1
     fi
     
+    print_info "Usando: $MVN_TYPE"
     print_info "Ejecutando tests unitarios..."
-    mvn test
+    "$MVN_CMD" test
     
     if [ $? -eq 0 ]; then
         echo ""
@@ -437,103 +469,120 @@ run_tests() {
 }
 
 test_api() {
-    print_header
-    echo -e "${BLUE}═══ Probando API ═══${NC}"
-    echo ""
-    
-    if ! is_running; then
-        print_error "El backend no está ejecutándose"
-        print_info "Inicia el backend primero (opción 4)"
-        return 1
-    fi
-    
-    echo "1. Registrar usuario"
-    echo "2. Listar usuarios"
-    echo "3. Crear partido"
-    echo "4. Buscar partidos"
-    echo "5. Unirse a partido"
-    echo "6. Ver estado del sistema"
-    echo "7. Ejecutar script de pruebas completo"
-    echo "0. Volver"
-    echo ""
-    
-    read -p "Selecciona una opción: " api_option
-    
-    case $api_option in
-        1)
+    while true; do
+        print_header
+        echo -e "${BLUE}═══ Probando API ═══${NC}"
+        echo ""
+        
+        if ! is_running; then
+            print_error "El backend no está ejecutándose"
+            print_info "Inicia el backend primero (opción 4)"
             echo ""
-            print_info "Registrando usuario de prueba..."
-            curl -X POST http://localhost:8080/api/usuarios \
-                -H "Content-Type: application/json" \
-                -d '{
-                    "nombreUsuario": "test_user_'$(date +%s)'",
-                    "email": "test'$(date +%s)'@example.com",
-                    "contrasena": "password123",
-                    "deporteFavorito": "FUTBOL",
-                    "nivelJuego": "INTERMEDIO",
-                    "ubicacion": "-34.6037,-58.3816",
-                    "notificacionesEmail": true,
-                    "notificacionesPush": false
-                }' | jq '.'
-            ;;
-        2)
-            echo ""
-            print_info "Obteniendo lista de usuarios..."
-            curl -X GET http://localhost:8080/api/usuarios | jq '.'
-            ;;
-        3)
-            echo ""
-            print_info "Creando partido de prueba..."
-            curl -X POST http://localhost:8080/api/partidos \
-                -H "Content-Type: application/json" \
-                -d '{
-                    "tipoDeporte": "FUTBOL_5",
-                    "ubicacion": "-34.6037,-58.3816",
-                    "direccion": "Parque Centenario, Buenos Aires",
-                    "fechaHora": "'$(date -u -v+1d +%Y-%m-%dT%H:%M:%S)'",
-                    "organizadorId": 1,
-                    "permiteCualquierNivel": true,
-                    "descripcion": "Partido de prueba"
-                }' | jq '.'
-            ;;
-        4)
-            echo ""
-            print_info "Buscando partidos disponibles..."
-            curl -X GET "http://localhost:8080/api/partidos/buscar?estado=NECESITAMOS_JUGADORES" | jq '.'
-            ;;
-        5)
-            read -p "ID del partido: " partido_id
-            read -p "ID del usuario: " usuario_id
-            echo ""
-            print_info "Uniendo usuario $usuario_id al partido $partido_id..."
-            curl -X POST "http://localhost:8080/api/partidos/$partido_id/unirse" \
-                -H "Content-Type: application/json" \
-                -d "{\"usuarioId\": $usuario_id}" | jq '.'
-            ;;
-        6)
-            echo ""
-            print_info "Verificando estado del sistema..."
-            curl -s http://localhost:8080/actuator/health | jq '.'
-            ;;
-        7)
-            echo ""
-            print_info "Ejecutando script de pruebas completo..."
-            if [ -f "$PROJECT_DIR/test-api.sh" ]; then
-                bash "$PROJECT_DIR/test-api.sh"
-            else
-                print_error "Script test-api.sh no encontrado"
-            fi
-            ;;
-        0)
-            return 0
-            ;;
-        *)
-            print_error "Opción inválida"
-            ;;
-    esac
-    
-    echo ""
-    read -p "Presiona Enter para continuar..."
+            read -p "Presiona Enter para volver..."
+            return 1
+        fi
+        
+        echo "1. Registrar usuario"
+        echo "2. Listar usuarios"
+        echo "3. Crear partido"
+        echo "4. Buscar partidos"
+        echo "5. Unirse a partido"
+        echo "6. Ver estado del sistema"
+        echo "7. Ejecutar script de pruebas completo"
+        echo "0. Volver al menú principal"
+        echo ""
+        
+        read -p "Selecciona una opción: " api_option
+        
+        case $api_option in
+            1)
+                echo ""
+                print_info "Registrando usuario de prueba..."
+                curl -X POST http://localhost:8080/api/usuarios \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                        "nombreUsuario": "test_user_'$(date +%s)'",
+                        "email": "test'$(date +%s)'@example.com",
+                        "contrasena": "password123",
+                        "deporteFavorito": "FUTBOL",
+                        "nivelJuego": "INTERMEDIO",
+                        "ubicacion": "-34.6037,-58.3816",
+                        "notificacionesEmail": true,
+                        "notificacionesPush": false
+                    }' | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            2)
+                echo ""
+                print_info "Obteniendo lista de usuarios..."
+                curl -X GET http://localhost:8080/api/usuarios | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            3)
+                echo ""
+                print_info "Creando partido de prueba..."
+                curl -X POST http://localhost:8080/api/partidos \
+                    -H "Content-Type: application/json" \
+                    -d '{
+                        "tipoDeporte": "FUTBOL_5",
+                        "ubicacion": "-34.6037,-58.3816",
+                        "direccion": "Parque Centenario, Buenos Aires",
+                        "fechaHora": "'$(date -u -v+1d +%Y-%m-%dT%H:%M:%S)'",
+                        "organizadorId": 1,
+                        "permiteCualquierNivel": true,
+                        "descripcion": "Partido de prueba"
+                    }' | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            4)
+                echo ""
+                print_info "Buscando partidos disponibles..."
+                curl -X GET "http://localhost:8080/api/partidos/buscar?estado=NECESITAMOS_JUGADORES" | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            5)
+                echo ""
+                read -p "ID del partido: " partido_id
+                read -p "ID del usuario: " usuario_id
+                echo ""
+                print_info "Uniendo usuario $usuario_id al partido $partido_id..."
+                curl -X POST "http://localhost:8080/api/partidos/$partido_id/unirse" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"usuarioId\": $usuario_id}" | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            6)
+                echo ""
+                print_info "Verificando estado del sistema..."
+                curl -s http://localhost:8080/actuator/health | jq '.'
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            7)
+                echo ""
+                print_info "Ejecutando script de pruebas completo..."
+                if [ -f "$PROJECT_DIR/test-api.sh" ]; then
+                    bash "$PROJECT_DIR/test-api.sh"
+                else
+                    print_error "Script test-api.sh no encontrado"
+                fi
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                print_error "Opción inválida"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # ========================================
@@ -541,51 +590,59 @@ test_api() {
 # ========================================
 
 open_browser() {
-    print_header
-    echo -e "${BLUE}═══ Abrir en Navegador ═══${NC}"
-    echo ""
-    
-    if ! is_running; then
-        print_error "El backend no está ejecutándose"
-        return 1
-    fi
-    
-    echo "1. Swagger UI (Documentación API)"
-    echo "2. H2 Console (Base de datos)"
-    echo "3. API REST (JSON)"
-    echo "0. Volver"
-    echo ""
-    
-    read -p "Selecciona una opción: " browser_option
-    
-    case $browser_option in
-        1)
-            print_info "Abriendo Swagger UI..."
-            open "http://localhost:8080/swagger-ui.html"
-            ;;
-        2)
-            print_info "Abriendo H2 Console..."
+    while true; do
+        print_header
+        echo -e "${BLUE}═══ Abrir en Navegador ═══${NC}"
+        echo ""
+        
+        if ! is_running; then
+            print_error "El backend no está ejecutándose"
             echo ""
-            print_info "Credenciales de acceso:"
-            echo "  JDBC URL: jdbc:h2:mem:unomas"
-            echo "  Username: sa"
-            echo "  Password: (dejar vacío)"
-            open "http://localhost:8080/h2-console"
-            ;;
-        3)
-            print_info "Abriendo API REST..."
-            open "http://localhost:8080/api/usuarios"
-            ;;
-        0)
-            return 0
-            ;;
-        *)
-            print_error "Opción inválida"
-            ;;
-    esac
-    
-    echo ""
-    read -p "Presiona Enter para continuar..."
+            read -p "Presiona Enter para volver..."
+            return 1
+        fi
+        
+        echo "1. Swagger UI (Documentación API)"
+        echo "2. H2 Console (Base de datos)"
+        echo "3. API REST (JSON)"
+        echo "0. Volver al menú principal"
+        echo ""
+        
+        read -p "Selecciona una opción: " browser_option
+        
+        case $browser_option in
+            1)
+                print_info "Abriendo Swagger UI..."
+                open "http://localhost:8080/swagger-ui.html"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            2)
+                print_info "Abriendo H2 Console..."
+                echo ""
+                print_info "Credenciales de acceso:"
+                echo "  JDBC URL: jdbc:h2:mem:unomas"
+                echo "  Username: sa"
+                echo "  Password: (dejar vacío)"
+                open "http://localhost:8080/h2-console"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            3)
+                print_info "Abriendo API REST..."
+                open "http://localhost:8080/api/usuarios"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                print_error "Opción inválida"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 # ========================================
