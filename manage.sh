@@ -498,7 +498,7 @@ test_api() {
             1)
                 echo ""
                 print_info "Registrando usuario de prueba..."
-                curl -X POST http://localhost:8080/api/usuarios \
+                curl -X POST http://localhost:8080/api/usuarios/registro \
                     -H "Content-Type: application/json" \
                     -d '{
                         "nombreUsuario": "test_user_'$(date +%s)'",
@@ -522,6 +522,8 @@ test_api() {
                 ;;
             3)
                 echo ""
+                read -p "ID del usuario organizador: " organizador_id
+                echo ""
                 print_info "Creando partido de prueba..."
                 curl -X POST http://localhost:8080/api/partidos \
                     -H "Content-Type: application/json" \
@@ -530,7 +532,7 @@ test_api() {
                         "ubicacion": "-34.6037,-58.3816",
                         "direccion": "Parque Centenario, Buenos Aires",
                         "fechaHora": "'$(date -u -v+1d +%Y-%m-%dT%H:%M:%S)'",
-                        "organizadorId": 1,
+                        "organizadorId": '$organizador_id',
                         "permiteCualquierNivel": true,
                         "descripcion": "Partido de prueba"
                     }' | jq '.'
@@ -540,7 +542,7 @@ test_api() {
             4)
                 echo ""
                 print_info "Buscando partidos disponibles..."
-                curl -X GET "http://localhost:8080/api/partidos/buscar?estado=NECESITAMOS_JUGADORES" | jq '.'
+                curl -X GET "http://localhost:8080/api/partidos?estado=NECESITAMOS_JUGADORES" | jq '.'
                 echo ""
                 read -p "Presiona Enter para continuar..."
                 ;;
