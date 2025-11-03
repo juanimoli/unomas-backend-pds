@@ -1,187 +1,96 @@
-# Documentación de Patrones de Diseño Implementados
+# Patrones de Diseño Implementados
 
-## 1. Patrón MVC (Model-View-Controller)
+## 1. MVC (Model-View-Controller)
 
-### Descripción
-El patrón MVC separa la aplicación en tres componentes principales:
+**Propósito**: Separar responsabilidades en capas
 
-### Implementación en Uno Mas
-- **Model**: Clases en `com.unomas.model` (Usuario, Partido, TipoDeporte)
-- **Controller**: Clases en `com.unomas.controller` (UsuarioController, PartidoController)
-- **Service**: Capa de lógica de negocio en `com.unomas.service` (UsuarioService, PartidoService)
-
-### Ubicación
-- `src/main/java/com/unomas/model/`
-- `src/main/java/com/unomas/controller/`
-- `src/main/java/com/unomas/service/`
+**Implementación**:
+- **Model**: `Usuario`, `Partido` (`com.unomas.model`)
+- **Controller**: `UsuarioController`, `PartidoController` (`com.unomas.controller`)
+- **Service**: `UsuarioService`, `PartidoService` (`com.unomas.service`)
 
 ---
 
-## 2. Patrón Strategy
+## 2. Strategy
 
-### Descripción
-Define una familia de algoritmos, encapsula cada uno y los hace intercambiables.
+**Propósito**: Algoritmos de emparejamiento intercambiables
 
-### Implementación en Uno Mas
-Se utiliza para implementar diferentes estrategias de emparejamiento de jugadores:
+**Interface**: `EmparejamientoStrategy`
 
-- **EmparejamientoStrategy** (Interface): Define la operación común
-- **NivelHabilidadStrategy**: Empareja jugadores por nivel de habilidad
-- **CercaniaStrategy**: Empareja jugadores por cercanía geográfica  
-- **HistorialStrategy**: Empareja jugadores por historial de partidos previos
+**Estrategias**:
+- `NivelHabilidadStrategy` - Por nivel de juego
+- `CercaniaStrategy` - Por distancia geográfica  
+- `HistorialStrategy` - Por historial previo
 
-### Uso
+**Uso**:
 ```java
 EmparejamientoStrategy strategy = new NivelHabilidadStrategy();
-boolean esCompatible = strategy.esCompatible(usuario, partido);
+boolean compatible = strategy.esCompatible(usuario, partido);
 ```
-
-### Ubicación
-`src/main/java/com/unomas/strategy/`
 
 ---
 
-## 3. Patrón State
+## 3. State
 
-### Descripción
-Permite que un objeto altere su comportamiento cuando su estado interno cambia.
+**Propósito**: Gestionar transiciones de estado del partido
 
-### Implementación en Uno Mas
-Gestiona los diferentes estados de un partido:
+**Interface**: `EstadoPartido`
 
-- **EstadoPartido** (Interface): Define operaciones comunes
-- **NecesitamosJugadoresState**: Estado inicial
-- **PartidoArmadoState**: Cuando se completa el equipo
-- **ConfirmadoState**: Todos los jugadores confirmaron
-- **EnJuegoState**: Partido en curso
-- **FinalizadoState**: Partido terminado
-- **CanceladoState**: Partido cancelado
+**Estados**:
+1. `NecesitamosJugadoresState` → 2. `PartidoArmadoState` → 3. `ConfirmadoState` → 4. `EnJuegoState` → 5. `FinalizadoState`
+- `CanceladoState` (desde cualquier estado pre-inicio)
 
-### Transiciones
-```
-NECESITAMOS_JUGADORES → PARTIDO_ARMADO → CONFIRMADO → EN_JUEGO → FINALIZADO
-                     ↓         ↓            ↓
-                          CANCELADO
-```
-
-### Uso
-```java
-partido.getEstado().confirmar(partido);
-partido.getEstado().iniciar(partido);
-```
-
-### Ubicación
-`src/main/java/com/unomas/state/`
+**Transiciones automáticas**:
+- NECESITAMOS → ARMADO (al completar equipo)
+- CONFIRMADO → EN_JUEGO (por fecha/hora)
 
 ---
 
-## 4. Patrón Observer
+## 4. Observer
 
-### Descripción
-Define una dependencia uno-a-muchos entre objetos para que cuando uno cambie de estado, todos sus dependientes sean notificados.
+**Propósito**: Notificar cambios de estado
 
-### Implementación en Uno Mas
-Sistema de notificaciones para eventos del partido:
+**Componentes**:
+- `PartidoObservable` (Subject)
+- `NotificacionObserver` (Interface)
+- `EmailNotificationObserver`
+- `PushNotificationObserver`
 
-- **PartidoObservable**: Subject que mantiene lista de observers
-- **NotificacionObserver** (Interface): Interface para observers
-- **EmailNotificationObserver**: Envía notificaciones por email
-- **PushNotificationObserver**: Envía notificaciones push
-
-### Uso
-```java
-partido.agregarObserver(new EmailNotificationObserver(emailAdapter));
-partido.notificarObservadores("Partido confirmado");
-```
-
-### Ubicación
-`src/main/java/com/unomas/observer/`
+**Eventos notificados**: Cambios de estado, nuevo jugador, cancelaciones
 
 ---
 
-## 5. Patrón Factory
+## 5. Factory
 
-### Descripción
-Define una interfaz para crear objetos, pero deja que las subclases decidan qué clase instanciar.
+**Propósito**: Crear partidos con diferentes configuraciones
 
-### Implementación en Uno Mas
-- **PartidoFactory**: Crea instancias de partidos con diferentes configuraciones
+**Clase**: `PartidoFactory`
 
-### Métodos
-- `crearPartido()`: Partido con configuración predeterminada
-- `crearPartidoPersonalizado()`: Partido con configuración personalizada
-- `crearPartidoRapido()`: Partido con configuración simplificada
-
-### Uso
-```java
-Partido partido = partidoFactory.crearPartido(
-    TipoDeporte.FUTBOL,
-    organizador,
-    fechaHora,
-    ubicacion,
-    direccion
-);
-```
-
-### Ubicación
-`src/main/java/com/unomas/factory/`
+**Métodos**:
+- `crearPartido()` - Configuración estándar
+- `crearPartidoPersonalizado()` - Con parámetros específicos
 
 ---
 
-## 6. Patrón Adapter
+## 6. Adapter
 
-### Descripción
-Convierte la interfaz de una clase en otra interfaz que el cliente espera.
+**Propósito**: Unificar servicios de notificación
 
-### Implementación en Uno Mas
-Adapta diferentes servicios de notificación a una interfaz común:
+**Interface**: `NotificacionServiceAdapter`
 
-- **NotificacionServiceAdapter** (Interface): Interface común
-- **EmailServiceAdapter**: Adapta JavaMailSender
-- **FirebaseServiceAdapter**: Adapta Firebase Cloud Messaging
-
-### Uso
-```java
-NotificacionServiceAdapter emailAdapter = new EmailServiceAdapter(mailSender);
-emailAdapter.enviarNotificacion(destinatario, titulo, mensaje);
-```
-
-### Ubicación
-`src/main/java/com/unomas/adapter/`
+**Adapters**:
+- `EmailServiceAdapter` - JavaMail
+- `FirebaseServiceAdapter` - Firebase FCM
 
 ---
 
-## Integración de Patrones
+## Integración
 
-El sistema integra todos los patrones de forma cohesiva:
+Los patrones trabajan juntos:
 
-1. **MVC** estructura toda la aplicación
-2. **Factory** crea los partidos
-3. **State** gestiona las transiciones de estado
-4. **Observer** notifica los cambios a través de **Adapters**
-5. **Strategy** determina la compatibilidad de jugadores
-
-### Ejemplo de Flujo Completo:
-
-```java
-// 1. Factory crea el partido
-Partido partido = partidoFactory.crearPartido(...);
-
-// 2. Observer pattern: configurar notificaciones
-partido.agregarObserver(new EmailNotificationObserver(emailAdapter));
-
-// 3. Strategy pattern: verificar compatibilidad
-if (nivelHabilidadStrategy.esCompatible(usuario, partido)) {
-    // 4. State pattern: agregar jugador puede cambiar estado
-    partido.agregarJugador(usuario);
-    
-    // 5. Observer notifica automáticamente el cambio
-    // 6. Adapter envía las notificaciones
-}
-```
-
-Este diseño hace el sistema:
-- **Mantenible**: Cada patrón tiene responsabilidades claras
-- **Extensible**: Fácil agregar nuevas estrategias, estados o notificaciones
-- **Testeable**: Componentes desacoplados
-- **Profesional**: Sigue principios SOLID
+1. **Factory** crea partido
+2. **Observer** se suscribe a cambios
+3. **State** gestiona transiciones
+4. **Strategy** valida compatibilidad
+5. **Adapter** envía notificaciones
+6. **MVC** orquesta todo
