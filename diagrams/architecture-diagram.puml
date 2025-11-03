@@ -1,0 +1,178 @@
+@startuml UnoMas_ArquitecturaComponentes
+
+title Sistema Uno Mas - Diagrama de Arquitectura de Componentes
+
+!define LIGHTBLUE #E3F2FD
+!define LIGHTGREEN #E8F5E9
+!define LIGHTYELLOW #FFF9C4
+!define LIGHTPINK #FCE4EC
+
+package "Presentación Layer" <<Rectangle>> LIGHTBLUE {
+  
+  [Swagger UI] as swagger
+  [REST API\nEndpoints] as api
+  
+  component "Controllers" as controllers {
+    [UsuarioController]
+    [PartidoController]
+  }
+  
+  swagger -down-> api
+  api -down-> controllers
+}
+
+package "Lógica de Negocio Layer" <<Rectangle>> LIGHTGREEN {
+  
+  component "Services" as services {
+    [UsuarioService]
+    [PartidoService]
+    [PartidoSchedulerService]
+  }
+  
+  component "Patrones de Diseño" as patterns {
+    
+    frame "Strategy Pattern" {
+      [EmparejamientoStrategy]
+      [NivelHabilidadStrategy]
+      [CercaniaStrategy]
+      [HistorialStrategy]
+    }
+    
+    frame "State Pattern" {
+      [EstadoPartido]
+      [6 Estados Concretos]
+    }
+    
+    frame "Observer Pattern" {
+      [PartidoObservable]
+      [NotificacionObserver]
+      [EmailObserver]
+      [PushObserver]
+    }
+    
+    frame "Factory Pattern" {
+      [PartidoFactory]
+    }
+    
+    frame "Adapter Pattern" {
+      [NotificacionServiceAdapter]
+      [EmailAdapter]
+      [FirebaseAdapter]
+    }
+  }
+}
+
+package "Capa de Persistencia" <<Rectangle>> LIGHTYELLOW {
+  
+  component "Repositories" as repos {
+    [UsuarioRepository]
+    [PartidoRepository]
+  }
+  
+  component "Entities" as entities {
+    [Usuario]
+    [Partido]
+    [TipoDeporte]
+  }
+  
+  database "H2 Database\n(In-Memory)" as db
+}
+
+package "Servicios Externos" <<Rectangle>> LIGHTPINK {
+  cloud "JavaMail\nSMTP Server" as javamail
+  cloud "Firebase\nCloud Messaging" as firebase
+}
+
+package "DTOs" as dtos {
+  [UsuarioRegistroDTO]
+  [UsuarioResponseDTO]
+  [PartidoCreateDTO]
+  [PartidoResponseDTO]
+  [PartidoBusquedaDTO]
+}
+
+' Conexiones verticales
+controllers -down-> services : usa
+services -down-> patterns : aplica
+services -down-> repos : usa
+repos -down-> entities : persiste
+entities -down-> db : almacena
+
+' Conexiones horizontales
+controllers ..> dtos : usa
+services ..> dtos : transforma
+
+services --> patterns : estrategias\nemparejamiento
+[Partido] --> patterns : cambios\nde estado
+[Partido] --> patterns : notifica\nobservadores
+
+patterns --> "Servicios Externos" : adapta\nservicios
+
+[EmailAdapter] ..> javamail : usa
+[FirebaseAdapter] ..> firebase : usa
+
+' Notas explicativas
+note right of controllers
+  <b>REST Controllers</b>
+  • Reciben requests HTTP
+  • Validan DTOs
+  • Retornan ResponseEntity
+  • Documentados con Swagger
+end note
+
+note right of patterns
+  <b>Patrones Aplicados</b>
+  • Strategy: Emparejamiento
+  • State: Estados partido
+  • Observer: Notificaciones
+  • Factory: Crear partidos
+  • Adapter: Servicios externos
+end note
+
+note right of repos
+  <b>Spring Data JPA</b>
+  • Queries automáticas
+  • Queries personalizadas
+  • Transacciones
+  • Caché de entidades
+end note
+
+note bottom of db
+  <b>Base de Datos H2</b>
+  • In-Memory (desarrollo)
+  • Consola web
+  • Compatible SQL
+  • Fácil cambiar a PostgreSQL
+end note
+
+note right of javamail
+  <b>Notificaciones Email</b>
+  • Configuración SMTP
+  • Simulación si no configurado
+  • Templates personalizables
+end note
+
+note right of firebase
+  <b>Notificaciones Push</b>
+  • Firebase Admin SDK
+  • Tokens de dispositivos
+  • Simulación si no configurado
+end note
+
+legend right
+  <b>Arquitectura en Capas</b>
+  
+  <b>1. Presentación:</b> REST API + Swagger
+  <b>2. Lógica de Negocio:</b> Services + Patterns
+  <b>3. Persistencia:</b> Repositories + JPA
+  <b>4. Servicios Externos:</b> Email + Push
+  
+  <b>Principios Aplicados:</b>
+  • Separación de responsabilidades
+  • Bajo acoplamiento
+  • Alta cohesión
+  • Inversión de dependencias
+  • Open/Closed principle
+endlegend
+
+@enduml

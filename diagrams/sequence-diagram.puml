@@ -1,0 +1,203 @@
+@startuml UnoMas_DiagramaSecuencia_CrearYUnirse
+
+title Sistema Uno Mas - Diagrama de Secuencia\nCrear Partido y Unirse
+
+actor "Usuario\nOrganizador" as Org
+actor "Usuario\nJugador" as Player
+participant "PartidoController" as PC
+participant "PartidoService" as PS
+participant "PartidoFactory" as PF
+participant "Partido" as P
+participant "EstadoPartido" as EP
+participant "NotificacionObserver" as NO
+participant "EmailAdapter" as EA
+participant "PushAdapter" as PA
+database "PartidoRepository" as PR
+
+== Crear Partido ==
+
+Org -> PC : POST /api/partidos\n(PartidoCreateDTO)
+activate PC
+
+PC -> PS : crearPartido(dto)
+activate PS
+
+PS -> PS : obtenerUsuarioEntity(organizadorId)
+
+note right of PS
+  <b>Factory Pattern</b>
+  Se usa el factory para
+  crear el partido
+end note
+
+PS -> PF : crearPartido(tipoDeporte, organizador,\nfechaHora, ubicacion, direccion)
+activate PF
+
+PF -> P : new Partido()
+activate P
+
+PF -> P : setEstado(new NecesitamosJugadoresState())
+P -> P : estadoActual = "NECESITAMOS_JUGADORES"
+
+PF --> PS : partido
+deactivate PF
+
+PS -> PR : save(partido)
+activate PR
+PR --> PS : partidoGuardado
+deactivate PR
+
+note right of PS
+  <b>Observer Pattern</b>
+  Se configuran los observers
+  para notificaciones
+end note
+
+PS -> P : agregarObserver(emailObserver)
+PS -> P : agregarObserver(pushObserver)
+
+PS -> P : notificarObservadores("Nuevo partido creado")
+activate P
+P -> NO : actualizar(partido, mensaje)
+activate NO
+NO -> EA : enviarNotificacion(...)
+NO -> PA : enviarNotificacion(...)
+deactivate NO
+deactivate P
+
+PS --> PC : PartidoResponseDTO
+deactivate PS
+
+PC --> Org : 201 Created\n(Partido creado)
+deactivate PC
+
+== Usuario se Une al Partido ==
+
+Player -> PC : POST /api/partidos/1/unirse\n{"usuarioId": 2}
+activate PC
+
+PC -> PS : unirseAPartido(1, 2)
+activate PS
+
+PS -> PR : findById(1)
+activate PR
+PR --> PS : partido
+deactivate PR
+
+PS -> PS : obtenerUsuarioEntity(2)
+
+note right of PS
+  <b>Strategy Pattern</b>
+  Se verifica compatibilidad
+  usando estrategia
+end note
+
+PS -> PS : nivelHabilidadStrategy.esCompatible(usuario, partido)
+
+alt Usuario Compatible
+    PS -> P : agregarJugador(usuario)
+    activate P
+    
+    P -> P : jugadores.add(usuario)
+    
+    alt Equipo se Completó
+        note right of P
+          <b>State Pattern</b>
+          Cambio automático de estado
+          cuando se completa el equipo
+        end note
+        
+        P -> EP : equipoCompleto(partido)
+        activate EP
+        EP -> P : cambiarEstado(new PartidoArmadoState())
+        P -> P : estado = PartidoArmadoState
+        P -> P : estadoActual = "PARTIDO_ARMADO"
+        deactivate EP
+        
+        P -> P : notificarObservadores("Equipo completo!")
+        P -> NO : actualizar(partido, "Equipo completo")
+        activate NO
+        NO -> EA : enviarNotificacion(todos los jugadores)
+        NO -> PA : enviarNotificacion(todos los jugadores)
+        deactivate NO
+    end
+    
+    deactivate P
+    
+    PS -> PR : save(partido)
+    activate PR
+    PR --> PS : partidoActualizado
+    deactivate PR
+    
+    PS --> PC : PartidoResponseDTO
+    deactivate PS
+    
+    PC --> Player : 200 OK\n(Te uniste al partido)
+    deactivate PC
+    
+else Usuario No Compatible
+    PS --> PC : IllegalArgumentException
+    PC --> Player : 400 Bad Request\n(No cumples requisitos)
+end
+
+== Confirmar Partido ==
+
+Org -> PC : PUT /api/partidos/1/confirmar
+activate PC
+
+PC -> PS : confirmarPartido(1)
+activate PS
+
+PS -> PR : findById(1)
+activate PR
+PR --> PS : partido
+deactivate PR
+
+note right of PS
+  <b>State Pattern</b>
+  Transición de estado
+  controlada por el patrón
+end note
+
+PS -> P : getEstado().confirmar(partido)
+activate P
+
+P -> EP : confirmar(partido)
+activate EP
+EP -> P : cambiarEstado(new ConfirmadoState())
+P -> P : estado = ConfirmadoState
+P -> P : estadoActual = "CONFIRMADO"
+deactivate EP
+
+P -> P : notificarObservadores("Partido confirmado")
+P -> NO : actualizar(partido, "Confirmado")
+activate NO
+NO -> EA : enviarNotificacion(...)
+NO -> PA : enviarNotificacion(...)
+deactivate NO
+
+deactivate P
+
+PS -> PR : save(partido)
+activate PR
+PR --> PS : partidoActualizado
+deactivate PR
+
+PS --> PC : PartidoResponseDTO
+deactivate PS
+
+PC --> Org : 200 OK\n(Partido confirmado)
+deactivate PC
+
+legend right
+  <b>Patrones Aplicados en esta Secuencia:</b>
+  
+  • <b>Factory Pattern:</b> PartidoFactory crea instancias
+  • <b>Strategy Pattern:</b> Verifica compatibilidad
+  • <b>State Pattern:</b> Gestiona transiciones de estado
+  • <b>Observer Pattern:</b> Notifica cambios
+  • <b>Adapter Pattern:</b> Email y Push adapters
+  • <b>MVC Pattern:</b> Separación de capas
+endlegend
+
+@enduml

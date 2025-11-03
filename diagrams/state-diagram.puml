@@ -1,0 +1,95 @@
+@startuml UnoMas_DiagramaEstados
+
+title Sistema Uno Mas - Diagrama de Estados del Partido\nState Pattern
+
+[*] --> NecesitamosJugadores : Crear Partido
+
+state "NECESITAMOS_JUGADORES" as NecesitamosJugadores {
+  NecesitamosJugadores : <b>Estado Inicial</b>
+  NecesitamosJugadores : El partido está buscando jugadores
+  NecesitamosJugadores : para completar el equipo
+}
+
+state "PARTIDO_ARMADO" as PartidoArmado {
+  PartidoArmado : <b>Equipo Completo</b>
+  PartidoArmado : Se alcanzó la cantidad requerida
+  PartidoArmado : de jugadores
+}
+
+state "CONFIRMADO" as Confirmado {
+  Confirmado : <b>Todos Confirmaron</b>
+  Confirmado : Todos los jugadores aceptaron
+  Confirmado : su participación
+}
+
+state "EN_JUEGO" as EnJuego {
+  EnJuego : <b>Partido en Curso</b>
+  EnJuego : El partido ha comenzado
+  EnJuego : Se llegó a la fecha/hora programada
+}
+
+state "FINALIZADO" as Finalizado {
+  Finalizado : <b>Partido Terminado</b>
+  Finalizado : El partido ha concluido
+  Finalizado : Se pueden registrar estadísticas
+}
+
+state "CANCELADO" as Cancelado {
+  Cancelado : <b>Partido Cancelado</b>
+  Cancelado : El organizador canceló el partido
+  Cancelado : antes de su inicio
+}
+
+NecesitamosJugadores --> PartidoArmado : equipoCompleto()\n[Se completa el equipo]
+PartidoArmado --> Confirmado : confirmar()\n[Todos aceptan]
+Confirmado --> EnJuego : iniciar() o\nauto-inicio por fecha/hora
+EnJuego --> Finalizado : finalizar()\n[Partido termina]
+
+NecesitamosJugadores --> Cancelado : cancelar()\n[Organizador cancela]
+PartidoArmado --> Cancelado : cancelar()\n[Organizador cancela]
+Confirmado --> Cancelado : cancelar()\n[Organizador cancela]
+
+Finalizado --> [*]
+Cancelado --> [*]
+
+note right of NecesitamosJugadores
+  <b>Transición automática:</b>
+  Cuando se agrega un jugador y
+  se completa el equipo, el estado
+  cambia automáticamente a
+  PARTIDO_ARMADO
+end note
+
+note right of EnJuego
+  <b>Auto-inicio:</b>
+  PartidoSchedulerService verifica
+  cada minuto si hay partidos
+  confirmados cuya fecha/hora llegó
+  y los inicia automáticamente
+end note
+
+note bottom of Cancelado
+  <b>Estado Final:</b>
+  No se puede cancelar un partido
+  que ya está EN_JUEGO o FINALIZADO
+end note
+
+legend left
+  <b>Métodos de la interfaz EstadoPartido:</b>
+  • equipoCompleto(partido)
+  • confirmar(partido)
+  • iniciar(partido)
+  • finalizar(partido)
+  • cancelar(partido)
+  • getNombre()
+  
+  <b>Implementaciones:</b>
+  • NecesitamosJugadoresState
+  • PartidoArmadoState
+  • ConfirmadoState
+  • EnJuegoState
+  • FinalizadoState
+  • CanceladoState
+endlegend
+
+@enduml
