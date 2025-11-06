@@ -1,4 +1,4 @@
-package com.unomas.strategy;
+package com.unomas.strategy.emparejamiento;
 
 import com.unomas.model.Partido;
 import com.unomas.model.Usuario;
@@ -63,6 +63,11 @@ public class HistorialStrategy implements EmparejamientoStrategy {
     @Override
     public String getNombre() {
         return "Historial de Partidos";
+    }
+    
+    @Override
+    public TipoEstrategia getTipo() {
+        return TipoEstrategia.HISTORIAL;
     }
     
     /**

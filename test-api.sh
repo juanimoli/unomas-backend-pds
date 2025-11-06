@@ -25,7 +25,7 @@ echo ""
 echo -e "${YELLOW}[POST]${NC} Registrar Usuario 1 (Organizador)"
 RESP1=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/usuarios/registro" \
   -H "Content-Type: application/json" \
-  -d '{"nombreUsuario":"juan_organizador","email":"juan@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","ubicacion":"-34.6037,-58.3816","notificacionesEmail":true,"notificacionesPush":false}')
+  -d '{"nombreUsuario":"juan_organizador","email":"juan@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","longitud":-58.3816,"latitud":-34.6037,"notificacionesEmail":true,"notificacionesPush":false}')
 STATUS1=$(echo "$RESP1" | tail -n1)
 BODY1=$(echo "$RESP1" | sed '$d')
 if [ "$STATUS1" -ge 200 ] && [ "$STATUS1" -lt 300 ]; then
@@ -40,13 +40,13 @@ echo ""
 echo -e "${YELLOW}[POST]${NC} Registrar Usuario 2"
 curl -s -X POST "$BASE_URL/api/usuarios/registro" \
   -H "Content-Type: application/json" \
-  -d '{"nombreUsuario":"maria_jugadora","email":"maria@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"AVANZADO","ubicacion":"-34.6100,-58.3900","notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
+  -d '{"nombreUsuario":"maria_jugadora","email":"maria@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"AVANZADO","longitud":-58.3900,"latitud":-34.6100,"notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
 
 echo ""
 echo -e "${YELLOW}[POST]${NC} Registrar Usuario 3"
 curl -s -X POST "$BASE_URL/api/usuarios/registro" \
   -H "Content-Type: application/json" \
-  -d '{"nombreUsuario":"carlos_principiante","email":"carlos@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"PRINCIPIANTE","ubicacion":"-34.6200,-58.4000","notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
+  -d '{"nombreUsuario":"carlos_principiante","email":"carlos@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"PRINCIPIANTE","longitud":-58.4000,"latitud":-34.6200,"notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
 
 # Test 2: Listar usuarios
 echo ""
@@ -62,7 +62,7 @@ echo ""
 echo -e "${YELLOW}[POST]${NC} Crear Partido de Fútbol 5"
 curl -s -X POST "$BASE_URL/api/partidos" \
   -H "Content-Type: application/json" \
-  -d '{"tipoDeporte":"FUTBOL_5","cantidadJugadoresRequeridos":5,"duracionMinutos":90,"ubicacion":"-34.6037,-58.3816","direccion":"Parque Centenario, Buenos Aires","fechaHora":"2025-11-10T18:00:00","organizadorId":1,"permiteCualquierNivel":true,"descripcion":"Partido amistoso"}' | jq '.'
+  -d '{"tipoDeporte":"FUTBOL_5","cantidadJugadoresRequeridos":5,"duracionMinutos":90,"longitud":-58.3816,"latitud":-34.6037,"direccion":"Parque Centenario, Buenos Aires","fechaHora":"2025-11-10T18:00:00","organizadorId":1,"permiteCualquierNivel":true,"descripcion":"Partido amistoso"}' | jq '.'
 
 # Test 4: Buscar partidos
 echo ""
@@ -77,18 +77,16 @@ curl -s "$BASE_URL/api/partidos?tipoDeporte=FUTBOL_5" | jq '.'
 
 # Test 5: Unirse al partido
 echo ""
-echo -e "${BLUE}=== 5. UNIRSE AL PARTIDO ===${NC}"
+echo -e "${BLUE}=== 5. UNIRSE AL PARTIDO (USANDO MATCHERCONTROLLER) ===${NC}"
 echo ""
 echo -e "${YELLOW}[POST]${NC} Usuario 2 se une al partido 1"
-curl -s -X POST "$BASE_URL/api/partidos/1/unirse" \
-  -H "Content-Type: application/json" \
-  -d '{"usuarioId":2}' | jq '.'
+curl -s -X POST "$BASE_URL/api/matcher/unirse/1?usuarioId=2" \
+  -H "Content-Type: application/json"
 
 echo ""
-echo -e "${YELLOW}[POST]${NC} Usuario 3 se une al partido 1"
-curl -s -X POST "$BASE_URL/api/partidos/1/unirse" \
-  -H "Content-Type: application/json" \
-  -d '{"usuarioId":3}' | jq '.'
+echo -e "${YELLOW}[POST]${NC} Usuario 3 confirma partido 1"
+curl -s -X POST "$BASE_URL/api/matcher/confirmar/1?usuarioId=3" \
+  -H "Content-Type: application/json"
 
 # Test 6: Ver detalle del partido
 echo ""
@@ -104,7 +102,7 @@ echo ""
 echo -e "${YELLOW}[POST]${NC} Registrar Usuario 4"
 curl -s -X POST "$BASE_URL/api/usuarios/registro" \
   -H "Content-Type: application/json" \
-  -d '{"nombreUsuario":"jugador4","email":"jugador4@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
+  -d '{"nombreUsuario":"jugador4","email":"jugador4@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","longitud":-58.3816,"latitud":-34.6037,"notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
 
 sleep 1
 
@@ -112,7 +110,7 @@ echo ""
 echo -e "${YELLOW}[POST]${NC} Registrar Usuario 5"
 curl -s -X POST "$BASE_URL/api/usuarios/registro" \
   -H "Content-Type: application/json" \
-  -d '{"nombreUsuario":"jugador5","email":"jugador5@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
+  -d '{"nombreUsuario":"jugador5","email":"jugador5@example.com","contrasena":"password123","deporteFavorito":"FUTBOL","nivelJuego":"INTERMEDIO","longitud":-58.3816,"latitud":-34.6037,"notificacionesEmail":true,"notificacionesPush":false}' | jq '.'
 
 # Test 8: Completar equipo
 echo ""
@@ -122,15 +120,13 @@ echo ""
 sleep 1
 
 echo -e "${YELLOW}[POST]${NC} Usuario 4 se une"
-curl -s -X POST "$BASE_URL/api/partidos/1/unirse" \
-  -H "Content-Type: application/json" \
-  -d '{"usuarioId":4}' | jq '.'
+curl -s -X POST "$BASE_URL/api/matcher/unirse/1?usuarioId=4" \
+  -H "Content-Type: application/json"
 
 echo ""
 echo -e "${YELLOW}[POST]${NC} Usuario 5 se une (completa equipo)"
-curl -s -X POST "$BASE_URL/api/partidos/1/unirse" \
-  -H "Content-Type: application/json" \
-  -d '{"usuarioId":5}' | jq '.'
+curl -s -X POST "$BASE_URL/api/matcher/unirse/1?usuarioId=5" \
+  -H "Content-Type: application/json"
 
 # Test 9: Verificar cambio de estado
 echo ""
@@ -169,7 +165,7 @@ sleep 1
 echo -e "${YELLOW}[POST]${NC} Crear segundo partido"
 curl -s -X POST "$BASE_URL/api/partidos" \
   -H "Content-Type: application/json" \
-  -d '{"tipoDeporte":"BASQUET","cantidadJugadoresRequeridos":5,"duracionMinutos":60,"ubicacion":"-34.6037,-58.3816","direccion":"Gimnasio Central","fechaHora":"2025-11-12T19:00:00","organizadorId":1,"permiteCualquierNivel":true}' | jq '.'
+  -d '{"tipoDeporte":"BASQUET","cantidadJugadoresRequeridos":5,"duracionMinutos":60,"longitud":-58.3816,"latitud":-34.6037,"direccion":"Gimnasio Central","fechaHora":"2025-11-12T19:00:00","organizadorId":1,"permiteCualquierNivel":true}' | jq '.'
 
 sleep 1
 
@@ -185,6 +181,43 @@ echo -e "${BLUE}=== 12. VER TODOS LOS PARTIDOS ===${NC}"
 echo ""
 echo -e "${YELLOW}[GET]${NC} Listar todos los partidos"
 curl -s "$BASE_URL/api/partidos" | jq '.'
+
+# Test 13: Probar funcionalidad de bajarse
+echo ""
+echo -e "${BLUE}=== 13. PROBAR BAJARSE DE PARTIDO ===${NC}"
+echo ""
+
+sleep 1
+
+echo -e "${YELLOW}[POST]${NC} Crear tercer partido"
+curl -s -X POST "$BASE_URL/api/partidos" \
+  -H "Content-Type: application/json" \
+  -d '{"tipoDeporte":"FUTBOL_5","cantidadJugadoresRequeridos":5,"duracionMinutos":90,"longitud":-58.3816,"latitud":-34.6037,"direccion":"Cancha Municipal","fechaHora":"2025-11-13T17:00:00","organizadorId":1,"permiteCualquierNivel":true}' | jq '.'
+
+sleep 1
+
+echo ""
+echo -e "${YELLOW}[POST]${NC} Usuario 2 se une al partido 3"
+curl -s -X POST "$BASE_URL/api/matcher/unirse/3?usuarioId=2" \
+  -H "Content-Type: application/json"
+
+sleep 1
+
+echo ""
+echo -e "${YELLOW}[GET]${NC} Ver estado del partido 3"
+curl -s "$BASE_URL/api/partidos/3" | jq '.'
+
+sleep 1
+
+echo ""
+echo -e "${YELLOW}[DELETE]${NC} Usuario 2 se baja del partido 3"
+curl -s -X DELETE "$BASE_URL/api/matcher/bajarse/3?usuarioId=2"
+
+sleep 1
+
+echo ""
+echo -e "${YELLOW}[GET]${NC} Ver estado del partido 3 después de la baja"
+curl -s "$BASE_URL/api/partidos/3" | jq '.'
 
 # Resumen final
 echo ""

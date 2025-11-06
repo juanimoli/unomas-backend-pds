@@ -34,11 +34,14 @@ public class UsuarioRegistroDTO {
     @NotNull(message = "El nivel de juego es obligatorio")
     private Usuario.NivelJuego nivelJuego;
     
-    private String ubicacion; // "latitud,longitud"
+    private Double longitud;  // Coordenada geográfica
+    private Double latitud;   // Coordenada geográfica
     
     private String firebaseToken;
     
+    @Builder.Default
     private boolean notificacionesEmail = true;
     
+    @Builder.Default
     private boolean notificacionesPush = true;
 }

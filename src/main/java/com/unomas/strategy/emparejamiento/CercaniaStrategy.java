@@ -1,6 +1,7 @@
-package com.unomas.strategy;
+package com.unomas.strategy.emparejamiento;
 
 import com.unomas.model.Partido;
+import com.unomas.model.Ubicacion;
 import com.unomas.model.Usuario;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,6 @@ import java.util.List;
 @Component
 public class CercaniaStrategy implements EmparejamientoStrategy {
     
-    private static final double RADIO_TIERRA_KM = 6371.0;
     private static final double DISTANCIA_MAXIMA_KM = 50.0; // 50 km
     
     @Override
@@ -80,48 +80,35 @@ public class CercaniaStrategy implements EmparejamientoStrategy {
         return "Cercanía Geográfica";
     }
     
+    @Override
+    public TipoEstrategia getTipo() {
+        return TipoEstrategia.CERCANIA;
+    }
+    
     /**
-     * Calcula la distancia entre dos puntos usando la fórmula de Haversine
-     * @param ubicacion1 "latitud,longitud"
-     * @param ubicacion2 "latitud,longitud"
+     * Calcula la distancia entre dos ubicaciones usando el método de Ubicacion
+     * @param ubicacion1 Primera ubicación
+     * @param ubicacion2 Segunda ubicación
      * @return Distancia en kilómetros
      */
-    private double calcularDistancia(String ubicacion1, String ubicacion2) {
-        String[] coords1 = ubicacion1.split(",");
-        String[] coords2 = ubicacion2.split(",");
-        
-        double lat1 = Double.parseDouble(coords1[0].trim());
-        double lon1 = Double.parseDouble(coords1[1].trim());
-        double lat2 = Double.parseDouble(coords2[0].trim());
-        double lon2 = Double.parseDouble(coords2[1].trim());
-        
-        return calcularDistanciaHaversine(lat1, lon1, lat2, lon2);
+    private double calcularDistancia(Ubicacion ubicacion1, Ubicacion ubicacion2) {
+        if (ubicacion1 == null || ubicacion2 == null) {
+            throw new IllegalArgumentException("Las ubicaciones no pueden ser nulas");
+        }
+        return ubicacion1.calcularDistancia(ubicacion2);
     }
     
     /**
      * Versión segura que retorna infinito si hay error
      */
-    private double calcularDistanciaSegura(String ubicacion1, String ubicacion2) {
+    private double calcularDistanciaSegura(Ubicacion ubicacion1, Ubicacion ubicacion2) {
         try {
+            if (ubicacion1 == null || ubicacion2 == null) {
+                return Double.MAX_VALUE;
+            }
             return calcularDistancia(ubicacion1, ubicacion2);
         } catch (Exception e) {
             return Double.MAX_VALUE;
         }
-    }
-    
-    /**
-     * Fórmula de Haversine para calcular distancia entre coordenadas
-     */
-    private double calcularDistanciaHaversine(double lat1, double lon1, double lat2, double lon2) {
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        
-        return RADIO_TIERRA_KM * c;
     }
 }

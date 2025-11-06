@@ -2,8 +2,9 @@ package com.unomas.factory;
 
 import com.unomas.model.Partido;
 import com.unomas.model.TipoDeporte;
+import com.unomas.model.Ubicacion;
 import com.unomas.model.Usuario;
-import com.unomas.state.NecesitamosJugadoresState;
+import com.unomas.state.BuscandoJugadoresState;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -23,7 +24,7 @@ public class PartidoFactory {
             TipoDeporte tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
-            String ubicacion,
+            Ubicacion ubicacion,
             String direccion
     ) {
         Partido partido = Partido.builder()
@@ -37,11 +38,11 @@ public class PartidoFactory {
                 .jugadores(new ArrayList<>())
                 .permiteCualquierNivel(true)
                 .fechaCreacion(LocalDateTime.now())
-                .estadoActual("NECESITAMOS_JUGADORES")
+                .estadoActual("BUSCANDO_JUGADORES")
                 .build();
         
         // Establecer el estado inicial
-        partido.setEstado(new NecesitamosJugadoresState());
+        partido.setEstado(new BuscandoJugadoresState());
         
         return partido;
     }
@@ -53,7 +54,7 @@ public class PartidoFactory {
             TipoDeporte tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
-            String ubicacion,
+            Ubicacion ubicacion,
             String direccion,
             int cantidadJugadores,
             int duracionMinutos,
@@ -75,11 +76,11 @@ public class PartidoFactory {
                 .permiteCualquierNivel(nivelMinimo == null && nivelMaximo == null)
                 .descripcion(descripcion)
                 .fechaCreacion(LocalDateTime.now())
-                .estadoActual("NECESITAMOS_JUGADORES")
+                .estadoActual("BUSCANDO_JUGADORES")
                 .build();
         
         // Establecer el estado inicial
-        partido.setEstado(new NecesitamosJugadoresState());
+        partido.setEstado(new BuscandoJugadoresState());
         
         return partido;
     }
@@ -91,7 +92,7 @@ public class PartidoFactory {
             TipoDeporte tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
-            String ubicacion
+            Ubicacion ubicacion
     ) {
         return crearPartido(tipoDeporte, organizador, fechaHora, ubicacion, null);
     }

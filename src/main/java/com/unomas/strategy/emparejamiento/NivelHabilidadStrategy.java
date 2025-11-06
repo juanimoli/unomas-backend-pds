@@ -1,4 +1,4 @@
-package com.unomas.strategy;
+package com.unomas.strategy.emparejamiento;
 
 import com.unomas.model.Partido;
 import com.unomas.model.Usuario;
@@ -80,6 +80,11 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
     @Override
     public String getNombre() {
         return "Nivel de Habilidad";
+    }
+    
+    @Override
+    public TipoEstrategia getTipo() {
+        return TipoEstrategia.NIVEL_HABILIDAD;
     }
     
     /**

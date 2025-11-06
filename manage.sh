@@ -135,21 +135,35 @@ is_compiled() {
 }
 
 is_running() {
+    # Primero verificar por PID guardado
     if [ -f "$PID_FILE" ]; then
         local pid=$(cat "$PID_FILE")
         if ps -p $pid > /dev/null 2>&1; then
             return 0
         else
             rm -f "$PID_FILE"
-            return 1
         fi
     fi
+    
+    # Verificar si hay algún proceso usando el JAR en puerto 8080
+    if lsof -ti:8080 > /dev/null 2>&1; then
+        return 0
+    fi
+    
     return 1
+}
+
+get_actual_pid() {
+    # Obtener PID real del proceso en puerto 8080
+    lsof -ti:8080 2>/dev/null | head -n1
 }
 
 get_backend_status() {
     if is_running; then
-        local pid=$(cat "$PID_FILE")
+        local pid=$(get_actual_pid)
+        if [ -z "$pid" ] && [ -f "$PID_FILE" ]; then
+            pid=$(cat "$PID_FILE")
+        fi
         echo -e "${GREEN}● EJECUTANDO${NC} (PID: $pid)"
     else
         echo -e "${RED}● DETENIDO${NC}"
@@ -263,8 +277,19 @@ start_backend() {
     echo ""
     
     if is_running; then
-        print_warning "El backend ya está ejecutándose (PID: $(cat $PID_FILE))"
-        return 1
+        local current_pid=$(get_actual_pid)
+        print_warning "Detectado proceso existente en puerto 8080 (PID: $current_pid)"
+        print_info "Deteniendo proceso anterior..."
+        pkill -f "unomas-backend" 2>/dev/null
+        sleep 2
+        
+        # Verificar si todavía está corriendo
+        if is_running; then
+            print_error "No se pudo detener el proceso anterior"
+            print_info "Intenta ejecutar: pkill -9 -f 'unomas-backend'"
+            return 1
+        fi
+        rm -f "$PID_FILE"
     fi
     
     if ! is_compiled; then
@@ -307,20 +332,37 @@ stop_backend() {
         return 1
     fi
     
-    local pid=$(cat "$PID_FILE")
-    print_info "Deteniendo servidor (PID: $pid)..."
-    
-    kill $pid
-    sleep 2
-    
-    if ps -p $pid > /dev/null 2>&1; then
-        print_warning "Forzando detención..."
-        kill -9 $pid
-        sleep 1
+    local pid=$(get_actual_pid)
+    if [ -z "$pid" ] && [ -f "$PID_FILE" ]; then
+        pid=$(cat "$PID_FILE")
     fi
     
+    print_info "Deteniendo servidor (PID: $pid)..."
+    
+    # Intentar detener el proceso específico
+    if [ -n "$pid" ]; then
+        kill $pid 2>/dev/null
+        sleep 2
+        
+        if ps -p $pid > /dev/null 2>&1; then
+            print_warning "Forzando detención..."
+            kill -9 $pid 2>/dev/null
+            sleep 1
+        fi
+    fi
+    
+    # Como fallback, matar cualquier proceso unomas-backend
+    pkill -f "unomas-backend" 2>/dev/null
+    
     rm -f "$PID_FILE"
-    print_success "Backend detenido"
+    
+    sleep 1
+    if ! is_running; then
+        print_success "Backend detenido"
+    else
+        print_warning "Es posible que algunos procesos aún estén corriendo"
+        print_info "Intenta: pkill -9 -f 'unomas-backend'"
+    fi
 }
 
 restart_backend() {
@@ -486,9 +528,11 @@ test_api() {
         echo "2. Listar usuarios"
         echo "3. Crear partido"
         echo "4. Buscar partidos"
-        echo "5. Unirse a partido"
-        echo "6. Ver estado del sistema"
-        echo "7. Ejecutar script de pruebas completo"
+        echo "5. Unirse a partido (MatcherController)"
+        echo "6. Confirmar partido (MatcherController)"
+        echo "7. Bajarse de partido (MatcherController)"
+        echo "8. Ver estado del sistema"
+        echo "9. Ejecutar script de pruebas completo"
         echo "0. Volver al menú principal"
         echo ""
         
@@ -529,7 +573,8 @@ test_api() {
                     -H "Content-Type: application/json" \
                     -d '{
                         "tipoDeporte": "FUTBOL_5",
-                        "ubicacion": "-34.6037,-58.3816",
+                        "longitud": -58.3816,
+                        "latitud": -34.6037,
                         "direccion": "Parque Centenario, Buenos Aires",
                         "fechaHora": "'$(date -u -v+1d +%Y-%m-%dT%H:%M:%S)'",
                         "organizadorId": '$organizador_id',
@@ -542,7 +587,7 @@ test_api() {
             4)
                 echo ""
                 print_info "Buscando partidos disponibles..."
-                curl -X GET "http://localhost:8080/api/partidos?estado=NECESITAMOS_JUGADORES" | jq '.'
+                curl -X GET "http://localhost:8080/api/partidos?estado=BUSCANDO_JUGADORES" | jq '.'
                 echo ""
                 read -p "Presiona Enter para continuar..."
                 ;;
@@ -551,21 +596,41 @@ test_api() {
                 read -p "ID del partido: " partido_id
                 read -p "ID del usuario: " usuario_id
                 echo ""
-                print_info "Uniendo usuario $usuario_id al partido $partido_id..."
-                curl -X POST "http://localhost:8080/api/partidos/$partido_id/unirse" \
-                    -H "Content-Type: application/json" \
-                    -d "{\"usuarioId\": $usuario_id}" | jq '.'
+                print_info "Uniendo usuario $usuario_id al partido $partido_id usando MatcherController..."
+                curl -X POST "http://localhost:8080/api/matcher/unirse/$partido_id?usuarioId=$usuario_id" \
+                    -H "Content-Type: application/json"
                 echo ""
                 read -p "Presiona Enter para continuar..."
                 ;;
             6)
+                echo ""
+                read -p "ID del partido: " partido_id
+                read -p "ID del usuario: " usuario_id
+                echo ""
+                print_info "Confirmando usuario $usuario_id para el partido $partido_id..."
+                curl -X POST "http://localhost:8080/api/matcher/confirmar/$partido_id?usuarioId=$usuario_id" \
+                    -H "Content-Type: application/json"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            7)
+                echo ""
+                read -p "ID del partido: " partido_id
+                read -p "ID del usuario: " usuario_id
+                echo ""
+                print_info "Bajando usuario $usuario_id del partido $partido_id..."
+                curl -X DELETE "http://localhost:8080/api/matcher/bajarse/$partido_id?usuarioId=$usuario_id"
+                echo ""
+                read -p "Presiona Enter para continuar..."
+                ;;
+            8)
                 echo ""
                 print_info "Verificando estado del sistema..."
                 curl -s http://localhost:8080/actuator/health | jq '.'
                 echo ""
                 read -p "Presiona Enter para continuar..."
                 ;;
-            7)
+            9)
                 echo ""
                 print_info "Ejecutando script de pruebas completo..."
                 if [ -f "$PROJECT_DIR/test-api.sh" ]; then

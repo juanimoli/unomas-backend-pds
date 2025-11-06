@@ -21,7 +21,8 @@ public class UsuarioResponseDTO {
     private String email;
     private TipoDeporte deporteFavorito;
     private Usuario.NivelJuego nivelJuego;
-    private String ubicacion;
+    private Double longitud;  // Coordenada geográfica
+    private Double latitud;   // Coordenada geográfica
     private boolean notificacionesEmail;
     private boolean notificacionesPush;
 }

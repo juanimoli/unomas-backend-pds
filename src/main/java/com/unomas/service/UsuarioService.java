@@ -3,6 +3,7 @@ package com.unomas.service;
 import com.unomas.dto.UsuarioRegistroDTO;
 import com.unomas.dto.UsuarioResponseDTO;
 import com.unomas.exception.ResourceNotFoundException;
+import com.unomas.model.Ubicacion;
 import com.unomas.model.Usuario;
 import com.unomas.repository.UsuarioRepository;
 import org.slf4j.Logger;
@@ -43,6 +44,12 @@ public class UsuarioService {
             throw new IllegalArgumentException("El email ya está registrado");
         }
         
+        // Crear objeto Ubicacion si hay coordenadas
+        Ubicacion ubicacion = null;
+        if (dto.getLongitud() != null && dto.getLatitud() != null) {
+            ubicacion = new Ubicacion(dto.getLongitud(), dto.getLatitud());
+        }
+        
         // Crear usuario
         Usuario usuario = Usuario.builder()
                 .nombreUsuario(dto.getNombreUsuario())
@@ -50,7 +57,7 @@ public class UsuarioService {
                 .contrasena(dto.getContrasena()) // En producción, usar encriptación
                 .deporteFavorito(dto.getDeporteFavorito())
                 .nivelJuego(dto.getNivelJuego())
-                .ubicacion(dto.getUbicacion())
+                .ubicacion(ubicacion)
                 .firebaseToken(dto.getFirebaseToken())
                 .notificacionesEmail(dto.isNotificacionesEmail())
                 .notificacionesPush(dto.isNotificacionesPush())
@@ -94,8 +101,8 @@ public class UsuarioService {
         if (dto.getNivelJuego() != null) {
             usuario.setNivelJuego(dto.getNivelJuego());
         }
-        if (dto.getUbicacion() != null) {
-            usuario.setUbicacion(dto.getUbicacion());
+        if (dto.getLongitud() != null && dto.getLatitud() != null) {
+            usuario.setUbicacion(new Ubicacion(dto.getLongitud(), dto.getLatitud()));
         }
         if (dto.getFirebaseToken() != null) {
             usuario.setFirebaseToken(dto.getFirebaseToken());
@@ -119,18 +126,31 @@ public class UsuarioService {
     }
     
     /**
+     * Guarda un usuario en la base de datos (uso interno y servicios relacionados)
+     */
+    public Usuario guardarUsuario(Usuario usuario) {
+        return usuarioRepository.save(usuario);
+    }
+    
+    /**
      * Mapea Usuario a DTO
      */
     private UsuarioResponseDTO mapearADTO(Usuario usuario) {
-        return UsuarioResponseDTO.builder()
+        UsuarioResponseDTO.UsuarioResponseDTOBuilder builder = UsuarioResponseDTO.builder()
                 .id(usuario.getId())
                 .nombreUsuario(usuario.getNombreUsuario())
                 .email(usuario.getEmail())
                 .deporteFavorito(usuario.getDeporteFavorito())
                 .nivelJuego(usuario.getNivelJuego())
-                .ubicacion(usuario.getUbicacion())
                 .notificacionesEmail(usuario.isNotificacionesEmail())
-                .notificacionesPush(usuario.isNotificacionesPush())
-                .build();
+                .notificacionesPush(usuario.isNotificacionesPush());
+        
+        // Extraer coordenadas si hay ubicación
+        if (usuario.getUbicacion() != null) {
+            builder.longitud(usuario.getUbicacion().getLongitud())
+                   .latitud(usuario.getUbicacion().getLatitud());
+        }
+        
+        return builder.build();
     }
 }

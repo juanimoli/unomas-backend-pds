@@ -43,13 +43,13 @@ public interface EstadoPartido {
      */
     static EstadoPartido fromString(String estado) {
         return switch (estado) {
-            case "NECESITAMOS_JUGADORES" -> new NecesitamosJugadoresState();
+            case "BUSCANDO_JUGADORES", "NECESITAMOS_JUGADORES" -> new BuscandoJugadoresState();
             case "PARTIDO_ARMADO" -> new PartidoArmadoState();
             case "CONFIRMADO" -> new ConfirmadoState();
             case "EN_JUEGO" -> new EnJuegoState();
             case "FINALIZADO" -> new FinalizadoState();
             case "CANCELADO" -> new CanceladoState();
-            default -> new NecesitamosJugadoresState();
+            default -> new BuscandoJugadoresState();
         };
     }
 }

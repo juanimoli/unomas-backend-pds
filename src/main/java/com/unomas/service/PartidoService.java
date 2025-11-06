@@ -4,17 +4,18 @@ import com.unomas.adapter.EmailServiceAdapter;
 import com.unomas.adapter.FirebaseServiceAdapter;
 import com.unomas.dto.*;
 import com.unomas.exception.ResourceNotFoundException;
+import com.unomas.factory.EmparejamientoStrategyFactory;
 import com.unomas.factory.PartidoFactory;
 import com.unomas.model.Partido;
 import com.unomas.model.TipoDeporte;
+import com.unomas.model.Ubicacion;
 import com.unomas.model.Usuario;
-import com.unomas.observer.EmailNotificationObserver;
-import com.unomas.observer.PushNotificationObserver;
+import com.unomas.observer.PartidoListener;
 import com.unomas.repository.PartidoRepository;
-import com.unomas.strategy.CercaniaStrategy;
-import com.unomas.strategy.EmparejamientoStrategy;
-import com.unomas.strategy.HistorialStrategy;
-import com.unomas.strategy.NivelHabilidadStrategy;
+import com.unomas.strategy.emparejamiento.EmparejamientoStrategy;
+import com.unomas.strategy.emparejamiento.TipoEstrategia;
+import com.unomas.strategy.notificacion.EmailNotificationStrategy;
+import com.unomas.strategy.notificacion.PushNotificationStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,13 +30,20 @@ import java.util.stream.Collectors;
  * Servicio para gestión de partidos
  * Patrón MVC: Service Layer
  * Integra todos los patrones: Factory, Strategy, State, Observer, Adapter
+ * 
+ * Factory Pattern:
+ * - PartidoFactory: crea instancias de Partido
+ * - EmparejamientoStrategyFactory: crea estrategias de emparejamiento en runtime
+ * 
+ * Esto reduce el acoplamiento - el servicio no conoce las implementaciones
+ * concretas de las estrategias, solo usa el factory para obtenerlas.
  */
 @Service
 @Transactional
 public class PartidoService {
     
     private static final Logger logger = LoggerFactory.getLogger(PartidoService.class);
-    
+
     @Autowired
     private PartidoRepository partidoRepository;
     
@@ -47,13 +54,7 @@ public class PartidoService {
     private PartidoFactory partidoFactory; // Factory Pattern
     
     @Autowired
-    private NivelHabilidadStrategy nivelHabilidadStrategy; // Strategy Pattern
-    
-    @Autowired
-    private CercaniaStrategy cercaniaStrategy; // Strategy Pattern
-    
-    @Autowired
-    private HistorialStrategy historialStrategy; // Strategy Pattern
+    private EmparejamientoStrategyFactory strategyFactory; // Factory Pattern para Strategies
     
     @Autowired
     private EmailServiceAdapter emailAdapter; // Adapter Pattern
@@ -72,6 +73,9 @@ public class PartidoService {
         // Obtener el organizador
         Usuario organizador = usuarioService.obtenerUsuarioEntity(dto.getOrganizadorId());
         
+        // Crear objeto Ubicacion desde coordenadas
+        Ubicacion ubicacion = new Ubicacion(dto.getLongitud(), dto.getLatitud());
+        
         // Usar Factory para crear el partido
         Partido partido;
         if (dto.getCantidadJugadoresRequeridos() != null || 
@@ -83,7 +87,7 @@ public class PartidoService {
                 dto.getTipoDeporte(),
                 organizador,
                 dto.getFechaHora(),
-                dto.getUbicacion(),
+                ubicacion,
                 dto.getDireccion(),
                 dto.getCantidadJugadoresRequeridos() != null ? 
                     dto.getCantidadJugadoresRequeridos() : 
@@ -99,7 +103,7 @@ public class PartidoService {
                 dto.getTipoDeporte(),
                 organizador,
                 dto.getFechaHora(),
-                dto.getUbicacion(),
+                ubicacion,
                 dto.getDireccion()
             );
         }
@@ -151,10 +155,11 @@ public class PartidoService {
         // Aplicar estrategia de emparejamiento si se especifica usuario
         if (busqueda.getUsuarioId() != null && busqueda.getEstrategiaEmparejamiento() != null) {
             Usuario usuario = usuarioService.obtenerUsuarioEntity(busqueda.getUsuarioId());
-            EmparejamientoStrategy strategy = obtenerEstrategia(busqueda.getEstrategiaEmparejamiento());
+            
+            // Usar Factory para crear la estrategia en runtime
+            EmparejamientoStrategy strategy = strategyFactory.crearEstrategia(busqueda.getEstrategiaEmparejamiento());
             
             // Filtrar solo partidos compatibles
-            List<Usuario> usuarios = List.of(usuario);
             partidos = partidos.stream()
                 .filter(p -> strategy.esCompatible(usuario, p))
                 .sorted((p1, p2) -> Double.compare(
@@ -195,7 +200,10 @@ public class PartidoService {
         
         // Verificar que el usuario cumple los requisitos
         if (!partido.isPermiteCualquierNivel()) {
-            if (!nivelHabilidadStrategy.esCompatible(usuario, partido)) {
+            // Usar Factory para obtener la estrategia de nivel de habilidad
+            EmparejamientoStrategy nivelStrategy = strategyFactory.crearEstrategia(TipoEstrategia.NIVEL_HABILIDAD);
+            
+            if (!nivelStrategy.esCompatible(usuario, partido)) {
                 throw new IllegalArgumentException("No cumples con los requisitos de nivel para este partido");
             }
         }
@@ -285,21 +293,49 @@ public class PartidoService {
     }
     
     /**
-     * Configura los observers del partido (Patrón Observer + Adapter)
+     * Configura los observers del partido (Patrón Observer + Strategy + Adapter)
+     * Crea listeners para cada jugador, con estrategias de notificación según preferencias.
      */
     private void configurarObservers(Partido partido) {
-        // Limpiar observers existentes
+        logger.debug("Configurando observers para partido {}", partido.getId());
+        
+        // Crear estrategias de notificación
+        EmailNotificationStrategy emailStrategy = new EmailNotificationStrategy(emailAdapter);
+        PushNotificationStrategy pushStrategy = new PushNotificationStrategy(firebaseAdapter);
+        
+        // Agregar listener para el organizador
+        if (partido.getOrganizador() != null) {
+            if (partido.getOrganizador().isNotificacionesEmail()) {
+                partido.agregarObserver(new PartidoListener(partido.getOrganizador(), emailStrategy));
+            }
+            if (partido.getOrganizador().isNotificacionesPush()) {
+                partido.agregarObserver(new PartidoListener(partido.getOrganizador(), pushStrategy));
+            }
+        }
+        
+        // Agregar listeners para cada jugador
+        for (Usuario jugador : partido.getJugadores()) {
+            if (jugador.isNotificacionesEmail()) {
+                partido.agregarObserver(new PartidoListener(jugador, emailStrategy));
+            }
+            if (jugador.isNotificacionesPush()) {
+                partido.agregarObserver(new PartidoListener(jugador, pushStrategy));
+            }
+        }
+        
+        logger.debug("Configurados {} observers para partido {}", 
+                    partido.getJugadores().size() + 1, partido.getId());
+    }
+    
+    /**
+     * Reconfigura los observers después de que se agreguen nuevos jugadores.
+     * Método público para uso desde otros servicios (ej. MatcherService).
+     */
+    public void reconfigurarObservers(Partido partido) {
+        // Limpiar observers existentes y reconfigurar
         partido.getObservers().clear();
-        
-        // Agregar observer de Email
-        EmailNotificationObserver emailObserver = new EmailNotificationObserver(emailAdapter);
-        partido.agregarObserver(emailObserver);
-        
-        // Agregar observer de Push Notifications
-        PushNotificationObserver pushObserver = new PushNotificationObserver(firebaseAdapter);
-        partido.agregarObserver(pushObserver);
-        
-        logger.debug("Observers configurados para partido {}", partido.getId());
+        configurarObservers(partido);
+        logger.debug("Observers reconfigurados para partido {}", partido.getId());
     }
     
     /**
@@ -312,35 +348,29 @@ public class PartidoService {
     }
     
     /**
-     * Obtiene la estrategia de emparejamiento según el nombre
+     * Obtiene un partido por ID (uso interno y servicios relacionados)
      */
-    private EmparejamientoStrategy obtenerEstrategia(String nombre) {
-        return switch (nombre.toUpperCase()) {
-            case "NIVEL", "HABILIDAD" -> nivelHabilidadStrategy;
-            case "CERCANIA", "UBICACION" -> cercaniaStrategy;
-            case "HISTORIAL" -> historialStrategy;
-            default -> nivelHabilidadStrategy;
-        };
+    protected Partido obtenerPartidoEntity(Long id) {
+        return partidoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Partido no encontrado con ID: " + id));
     }
     
     /**
-     * Obtiene un partido por ID (uso interno)
+     * Guarda un partido en la base de datos
      */
-    private Partido obtenerPartidoEntity(Long id) {
-        return partidoRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Partido no encontrado con ID: " + id));
+    protected Partido guardarPartido(Partido partido) {
+        return partidoRepository.save(partido);
     }
     
     /**
      * Mapea Partido a DTO
      */
     private PartidoResponseDTO mapearADTO(Partido partido) {
-        return PartidoResponseDTO.builder()
+        PartidoResponseDTO.PartidoResponseDTOBuilder builder = PartidoResponseDTO.builder()
             .id(partido.getId())
             .tipoDeporte(partido.getTipoDeporte())
             .cantidadJugadoresRequeridos(partido.getCantidadJugadoresRequeridos())
             .duracionMinutos(partido.getDuracionMinutos())
-            .ubicacion(partido.getUbicacion())
             .direccion(partido.getDireccion())
             .fechaHora(partido.getFechaHora())
             .estadoActual(partido.getEstadoActual())
@@ -354,8 +384,15 @@ public class PartidoService {
             .descripcion(partido.getDescripcion())
             .fechaCreacion(partido.getFechaCreacion())
             .jugadoresFaltantes(partido.getJugadoresFaltantes())
-            .estaCompleto(partido.estaCompleto())
-            .build();
+            .estaCompleto(partido.estaCompleto());
+        
+        // Extraer coordenadas si hay ubicación
+        if (partido.getUbicacion() != null) {
+            builder.longitud(partido.getUbicacion().getLongitud())
+                   .latitud(partido.getUbicacion().getLatitud());
+        }
+        
+        return builder.build();
     }
     
     /**
@@ -368,6 +405,10 @@ public class PartidoService {
             .email(usuario.getEmail())
             .nivelJuego(usuario.getNivelJuego())
             .deporteFavorito(usuario.getDeporteFavorito())
+            .longitud(usuario.getUbicacion() != null ? usuario.getUbicacion().getLongitud() : null)
+            .latitud(usuario.getUbicacion() != null ? usuario.getUbicacion().getLatitud() : null)
+            .notificacionesEmail(usuario.isNotificacionesEmail())
+            .notificacionesPush(usuario.isNotificacionesPush())
             .build();
     }
 }

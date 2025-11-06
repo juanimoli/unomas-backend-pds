@@ -23,7 +23,8 @@ public class PartidoResponseDTO {
     private TipoDeporte tipoDeporte;
     private int cantidadJugadoresRequeridos;
     private int duracionMinutos;
-    private String ubicacion;
+    private Double longitud;  // Coordenada geográfica
+    private Double latitud;   // Coordenada geográfica
     private String direccion;
     private LocalDateTime fechaHora;
     private String estadoActual;

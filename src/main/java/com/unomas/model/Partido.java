@@ -1,8 +1,9 @@
 package com.unomas.model;
 
-import com.unomas.observer.PartidoObservable;
+import com.unomas.observer.IObservable;
+import com.unomas.observer.IListener;
 import com.unomas.state.EstadoPartido;
-import com.unomas.state.NecesitamosJugadoresState;
+import com.unomas.state.BuscandoJugadoresState;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +18,7 @@ import java.util.List;
  * Entidad Partido - Representa un encuentro deportivo
  * Patrón MVC: Model
  * Patrón State: Mantiene referencia al estado actual
- * Patrón Observer: Implementa PartidoObservable
+ * Patrón Observer: Implementa IObservable
  */
 @Entity
 @Table(name = "partidos")
@@ -25,7 +26,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Partido extends PartidoObservable {
+public class Partido implements IObservable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,8 +42,8 @@ public class Partido extends PartidoObservable {
     @Column(nullable = false)
     private int duracionMinutos;
 
-    @Column(nullable = false)
-    private String ubicacion;
+    @Embedded
+    private Ubicacion ubicacion; // Objeto Ubicacion embebido
 
     private String direccion;
 
@@ -62,6 +63,7 @@ public class Partido extends PartidoObservable {
         joinColumns = @JoinColumn(name = "partido_id"),
         inverseJoinColumns = @JoinColumn(name = "usuario_id")
     )
+    @Builder.Default
     private List<Usuario> jugadores = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
@@ -70,6 +72,7 @@ public class Partido extends PartidoObservable {
     @Enumerated(EnumType.STRING)
     private Usuario.NivelJuego nivelMaximoRequerido;
 
+    @Builder.Default
     private boolean permiteCualquierNivel = true;
 
     @Column(length = 500)
@@ -87,17 +90,42 @@ public class Partido extends PartidoObservable {
     @Transient
     private EstadoPartido estado;
 
+    // Lista de observadores (Patrón Observer)
+    @Transient
+    private final List<IListener> observers = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         this.fechaCreacion = LocalDateTime.now();
-        this.estadoActual = "NECESITAMOS_JUGADORES";
-        this.estado = new NecesitamosJugadoresState();
+        this.estadoActual = "BUSCANDO_JUGADORES";
+        this.estado = new BuscandoJugadoresState();
     }
 
     @PostLoad
     protected void onLoad() {
         // Restaurar el estado desde la base de datos
         this.estado = EstadoPartido.fromString(this.estadoActual);
+    }
+
+    // Implementación de IObservable
+
+    @Override
+    public void agregarObserver(IListener observer) {
+        if (!observers.contains(observer)) {
+            observers.add(observer);
+        }
+    }
+
+    @Override
+    public void eliminarObserver(IListener observer) {
+        observers.remove(observer);
+    }
+
+    @Override
+    public void notificarObservadores() {
+        for (IListener observer : observers) {
+            observer.notificar(this);
+        }
     }
 
     /**
@@ -107,7 +135,7 @@ public class Partido extends PartidoObservable {
     public void cambiarEstado(EstadoPartido nuevoEstado) {
         this.estado = nuevoEstado;
         this.estadoActual = nuevoEstado.getNombre();
-        notificarObservadores("Estado cambiado a: " + nuevoEstado.getNombre());
+        notificarObservadores();
     }
 
     /**
@@ -136,5 +164,12 @@ public class Partido extends PartidoObservable {
      */
     public int getJugadoresFaltantes() {
         return Math.max(0, cantidadJugadoresRequeridos - jugadores.size());
+    }
+    
+    /**
+     * Obtiene la lista de observers (para reconfiguración)
+     */
+    public List<IListener> getObservers() {
+        return observers;
     }
 }

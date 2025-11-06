@@ -3,11 +3,11 @@ package com.unomas.state;
 import com.unomas.model.Partido;
 
 /**
- * Estado: Necesitamos Jugadores
+ * Estado: Buscando Jugadores
  * Estado inicial cuando se crea un partido
  * Patrón State
  */
-public class NecesitamosJugadoresState implements EstadoPartido {
+public class BuscandoJugadoresState implements EstadoPartido {
 
     @Override
     public void equipoCompleto(Partido partido) {
@@ -34,11 +34,11 @@ public class NecesitamosJugadoresState implements EstadoPartido {
     @Override
     public void cancelar(Partido partido) {
         partido.cambiarEstado(new CanceladoState());
-        System.out.println("Partido " + partido.getId() + " cancelado desde estado NECESITAMOS_JUGADORES");
+        System.out.println("Partido " + partido.getId() + " cancelado desde estado BUSCANDO_JUGADORES");
     }
 
     @Override
     public String getNombre() {
-        return "NECESITAMOS_JUGADORES";
+        return "BUSCANDO_JUGADORES";
     }
 }

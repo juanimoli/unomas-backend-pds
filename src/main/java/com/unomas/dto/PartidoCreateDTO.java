@@ -4,7 +4,6 @@ import com.unomas.model.TipoDeporte;
 import com.unomas.model.Usuario;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,8 +30,11 @@ public class PartidoCreateDTO {
     @Min(value = 30, message = "La duración mínima es de 30 minutos")
     private Integer duracionMinutos;
     
-    @NotBlank(message = "La ubicación es obligatoria")
-    private String ubicacion; // "latitud,longitud"
+    @NotNull(message = "La longitud es obligatoria")
+    private Double longitud;
+    
+    @NotNull(message = "La latitud es obligatoria")
+    private Double latitud;
     
     private String direccion; // Dirección legible
     

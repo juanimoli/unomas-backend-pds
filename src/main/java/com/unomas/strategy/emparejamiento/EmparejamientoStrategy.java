@@ -1,4 +1,4 @@
-package com.unomas.strategy;
+package com.unomas.strategy.emparejamiento;
 
 import com.unomas.model.Partido;
 import com.unomas.model.Usuario;
@@ -39,4 +39,10 @@ public interface EmparejamientoStrategy {
      * Obtiene el nombre de la estrategia
      */
     String getNombre();
+    
+    /**
+     * Obtiene el tipo único de esta estrategia
+     * @return TipoEstrategia enum value
+     */
+    TipoEstrategia getTipo();
 }

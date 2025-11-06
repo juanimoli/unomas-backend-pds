@@ -1,353 +1,309 @@
-@startuml UnoMas_DiagramaClases_Completo
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
 
-' Aumentar límite de tamaño
-skinparam dpi 100
-skinparam linetype ortho
+' ===================== DTOs & Enums =====================
+package "DTOs" {
+  enum TipoEstrategia {
+    NIVEL_HABILIDAD
+    CERCANIA
+    HISTORIAL
+  }
 
-!define LIGHTBLUE #E3F2FD
-!define LIGHTGREEN #E8F5E9
-!define LIGHTYELLOW #FFF9C4
-!define LIGHTPINK #FCE4EC
-!define LIGHTORANGE #FFE0B2
-!define LIGHTPURPLE #F3E5F5
+  class UsuarioDTO {
+    +nombre: String
+    +email: String
+    +nivelJuego: String
+    +longitud: Double
+    +latitud: Double
+  }
 
-title Sistema Uno Mas - Diagrama de Clases Completo\nPatrones: MVC, Strategy, State, Observer, Factory, Adapter
+  class PartidoDTO {
+    +deporte: String
+    +cantidadJugadores: Integer
+    +fecha: Date
+    +hora: Time
+    +duracionMin: Integer
+    +ubicacion: String
+  }
 
-' ====================================
-' PATRÓN MVC - CONTROLLERS
-' ====================================
-package "Controllers (MVC)" <<Rectangle>> LIGHTBLUE {
-    class UsuarioController {
-        - usuarioService
-        + registrarUsuario()
-        + obtenerUsuario()
-        + actualizarUsuario()
-    }
-    
-    class PartidoController {
-        - partidoService
-        + crearPartido()
-        + buscarPartidos()
-        + unirseAPartido()
-        + confirmarPartido()
-    }
+  class BusquedaDTO {
+    +tipoEstrategia: TipoEstrategia
+    +deporte: String
+    +fecha: String
+  }
 }
 
-' ====================================
-' PATRÓN MVC - SERVICES
-' ====================================
-package "Services (MVC)" <<Rectangle>> LIGHTGREEN {
-    class UsuarioService {
-        - usuarioRepository
-        + registrarUsuario()
-        + obtenerUsuario()
-        + actualizarUsuario()
-    }
-    
-    class PartidoService {
-        - partidoRepository
-        - partidoFactory
-        - strategies
-        - adapters
-        + crearPartido()
-        + buscarPartidos()
-        + unirseAPartido()
-    }
-    
-    class PartidoSchedulerService {
-        + iniciarPartidosAutomaticamente()
-    }
+' ===================== MVC =====================
+package "Patrón MVC" {
+  class PartidoMatcherController {
+    +matcherService: MatcherService
+    +unirseAPartido(user: UsuarioDTO, partido: PartidoDTO): void
+    +confirmarPartido(partido: PartidoDTO): PartidoDTO
+  }
+
+  class UsuarioController {
+    +usuarioService: UsuarioService
+    +crearUsuario(UsuarioDTO): UsuarioDTO
+    +obtenerUsuario(int): UsuarioDTO
+    +actualizarUsuario(UsuarioDTO): UsuarioDTO
+  }
+
+  class PartidoController {
+    +partidoService: PartidoService
+    +crearPartido(partido: PartidoDTO): PartidoDTO
+    +buscarPartidos(busqueda: BusquedaDTO): List<Partido>
+    +cancelarPartido(partido: PartidoDTO)
+  }
+
+  class MatcherService {
+    +usuarioService: UsuarioService
+    +partidoService: PartidoService
+    +unirseAPartido(int, int)
+    +confirmarPartido(int, int)
+  }
+
+  class UsuarioService {
+    -usuarioRepository: UsuarioRepository
+    +registrarUsuario(): Usuario
+    +obtenerUsuario(): Usuario
+    +actualizarUsuario(): Usuario
+    +crearUsuario(Usuario): Usuario
+  }
+
+  class PartidoService {
+    -emparejamiento: EmparejamientoStrategyFactory
+    -partidoRepository: PartidoRepository
+    +crearPartido(partido: Partido): Partido
+    +buscarPartido(tipoEstrategia: TipoEstrategia, deporte: String): List<Partido>
+    +cancelarPartido(id: Integer)
+  }
+
+  interface UsuarioRepository {
+    +findByEmail(email: String): Usuario
+  }
+
+  interface PartidoRepository {
+    +findByEstadoActual(estado: EstadoPartido): List<Partido>
+    +findByDeporte(deporte: String): List<Partido>
+  }
+
+  PartidoMatcherController --> MatcherService
+  UsuarioController --> UsuarioService
+  PartidoController --> PartidoService
+  MatcherService --> UsuarioService
+  MatcherService --> PartidoService
+  UsuarioService --> UsuarioRepository
+  PartidoService --> PartidoRepository
 }
 
-' ====================================
-' PATRÓN MVC - REPOSITORIES
-' ====================================
-package "Repositories (MVC)" <<Rectangle>> LIGHTYELLOW {
-    interface UsuarioRepository {
-        + findByNombreUsuario()
-        + findByEmail()
-    }
-    
-    interface PartidoRepository {
-        + findByEstadoActual()
-        + findByTipoDeporte()
-    }
+' ===================== Dominio =====================
+package "Dominio" {
+  enum NivelJuego {
+    PRINCIPIANTE
+    INTERMEDIO
+    AVANZADO
+  }
+
+  class Ubicacion {
+    +longitud: Double
+    +latitud: Double
+  }
+
+  class Usuario {
+    +id: Integer
+    +nombre: String
+    +email: String
+    +nivelJuego: NivelJuego
+    +partidos: List<Partido>
+    +ubicacion: Ubicacion
+    +unirseAPartido(partido: Partido)
+    +bajarseDePartido(partido: Partido)
+  }
+
+  class Partido {
+    +id: Integer
+    +tipoDeporte: String
+    +organizador: Usuario
+    +jugadores: List<Usuario>
+    +estado: EstadoPartido
+    +cantidadJugadores: Integer
+    +duracionPartidoMin: Integer
+    +fechaPartido: Date
+    +hora: Time
+    +observers: List<IListener>
+    +ubicacion: Ubicacion
+    +agregarObserver(listener: IListener)
+    +eliminarObserver(listener: IListener)
+    +notificarObservadores(mensaje: String)
+  }
+
+  Usuario "0..*" -- "0..*" Partido : participa
+  Partido "1" -- "1" Usuario : organizador
+  Usuario "1" -- "1" Ubicacion
+  Partido "1" -- "1" Ubicacion
 }
 
-' ====================================
-' PATRÓN MVC - MODELS
-' ====================================
-package "Models (MVC)" <<Rectangle>> LIGHTPINK {
-    class Usuario {
-        - id
-        - nombreUsuario
-        - email
-        - nivelJuego
-        - partidos
-    }
-    
-    enum NivelJuego {
-        PRINCIPIANTE
-        INTERMEDIO
-        AVANZADO
-    }
-    
-    class Partido {
-        - id
-        - tipoDeporte
-        - organizador
-        - jugadores
-        - estado
-        + cambiarEstado()
-        + agregarJugador()
-    }
-    
-    enum TipoDeporte {
-        FUTBOL
-        BASQUET
-        VOLEY
-        PADDLE
-    }
+' ===================== Strategy (Emparejamiento) =====================
+package "Patrón Strategy (Emparejamiento)" {
+  interface EmparejamientoStrategy {
+    +esCompatible(usuario: Usuario, partido: Partido)
+    +calcularCompatibilidadUsuario(usuario: Usuario, partido: Partido)
+  }
+
+  class CercaniaStrategy {
+    +esCompatible(usuario: Usuario, partido: Partido)
+    +calcularCompatibilidadUsuario(usuario: Usuario, partido: Partido)
+  }
+  class NivelHabilidadStrategy {
+    +esCompatible(usuario: Usuario, partido: Partido)
+    +calcularCompatibilidadUsuario(usuario: Usuario, partido: Partido)
+  }
+  class HistorialStrategy {
+    +esCompatible(usuario: Usuario, partido: Partido)
+    +calcularCompatibilidadUsuario(usuario: Usuario, partido: Partido)
+  }
+
+  EmparejamientoStrategy <|.. CercaniaStrategy
+  EmparejamientoStrategy <|.. NivelHabilidadStrategy
+  EmparejamientoStrategy <|.. HistorialStrategy
+
+  class EmparejamientoStrategyFactory {
+    +crearEstrategia(tipo: TipoEstrategia): EmparejamientoStrategy
+  }
+
+  EmparejamientoStrategyFactory ..> EmparejamientoStrategy : crearEstrategia()
+  PartidoService --> EmparejamientoStrategyFactory
+  BusquedaDTO --> TipoEstrategia
 }
 
-' ====================================
-' PATRÓN STRATEGY
-' ====================================
-package "Strategy Pattern" <<Rectangle>> LIGHTORANGE {
-    interface EmparejamientoStrategy {
-        + esCompatible()
-        + calcularCompatibilidad()
-    }
-    
-    class NivelHabilidadStrategy {
-        + esCompatible()
-        + calcularCompatibilidad()
-    }
-    
-    class CercaniaStrategy {
-        + esCompatible()
-        + calcularCompatibilidad()
-    }
-    
-    class HistorialStrategy {
-        + esCompatible()
-        + calcularCompatibilidad()
-    }
+' ===================== State =====================
+package "Patrón State" {
+  interface EstadoPartido {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+
+  class BuscandoJugadores {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+  class PartidoArmado {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+  class Confirmado {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+  class EnJuego {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+  class Cancelado {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+  class Finalizado {
+    +equipoCompleto(partido: Partido)
+    +confirmar(partido: Partido)
+    +iniciar(partido: Partido)
+    +finalizar(partido: Partido)
+    +cancelar(partido: Partido)
+  }
+
+  EstadoPartido <|.. BuscandoJugadores
+  EstadoPartido <|.. PartidoArmado
+  EstadoPartido <|.. Confirmado
+  EstadoPartido <|.. EnJuego
+  EstadoPartido <|.. Cancelado
+  EstadoPartido <|.. Finalizado
+
+  Partido --> EstadoPartido : estado
 }
 
-' ====================================
-' PATRÓN STATE
-' ====================================
-package "State Pattern" <<Rectangle>> LIGHTPURPLE {
-    interface EstadoPartido {
-        + equipoCompleto()
-        + confirmar()
-        + iniciar()
-        + finalizar()
-        + cancelar()
-    }
-    
-    class NecesitamosJugadoresState
-    class PartidoArmadoState
-    class ConfirmadoState
-    class EnJuegoState
-    class FinalizadoState
-    class CanceladoState
+' ===================== Observable/Observer + Strategy(Notif) + Adapter =====================
+package "Patrón Observable/Observer" {
+  interface IObservable {
+    +agregarObserver(): void
+    +eliminarObserver(): void
+    +notificarObservadores(mensaje: String): void
+  }
+
+  interface IListener {
+    +notificar(observable: Object)
+  }
+
+  class PartidoListener {
+    -estrategia: IStrategiaNotificacion
+    +notificar(observable: Object)
+  }
+
+  Partido ..|> IObservable
+  PartidoListener ..|> IListener
+  Partido "0..*" --> IListener : observers
 }
 
-' ====================================
-' PATRÓN OBSERVER
-' ====================================
-package "Observer Pattern" <<Rectangle>> LIGHTBLUE {
-    abstract class PartidoObservable {
-        - observers
-        + agregarObserver()
-        # notificarObservadores()
-    }
-    
-    interface NotificacionObserver {
-        + actualizar()
-    }
-    
-    class EmailNotificationObserver {
-        + actualizar()
-    }
-    
-    class PushNotificationObserver {
-        + actualizar()
-    }
+package "Patrón Strategy (Notificación)" {
+  interface IStrategiaNotificacion {
+    +notificar(mensaje: NotificationDTO)
+  }
+
+  class EmailNotificationObserver {
+    +notificar(mensaje: NotificationDTO)
+  }
+  class PushNotificationObserver {
+    +notificar(mensaje: NotificationDTO)
+  }
+
+  IStrategiaNotificacion <|.. EmailNotificationObserver
+  IStrategiaNotificacion <|.. PushNotificationObserver
+
+  class NotificationDTO {
+    +atributos: Map<String, String>
+  }
+
+  PartidoListener --> IStrategiaNotificacion : utiliza
+  IStrategiaNotificacion --> NotificationDTO
 }
 
-' ====================================
-' PATRÓN ADAPTER
-' ====================================
-package "Adapter Pattern" <<Rectangle>> LIGHTGREEN {
-    interface NotificacionServiceAdapter {
-        + enviarNotificacion()
-        + isDisponible()
-    }
-    
-    class EmailServiceAdapter {
-        + enviarNotificacion()
-    }
-    
-    class FirebaseServiceAdapter {
-        + enviarNotificacion()
-    }
+package "Patrón Adapter" {
+  interface EmailSenderAdapter {
+    +send(subject: String, body: String)
+  }
+  class JavaMailAdapter {
+    +send(subject: String, body: String)
+  }
+  EmailSenderAdapter <|.. JavaMailAdapter
+
+  interface PushNotificationAdapter {
+    +sendNotification(userID: Integer, message: String)
+  }
+  class FirebaseAdapter {
+    +sendNotification(userID: Integer, message: String)
+  }
+  PushNotificationAdapter <|.. FirebaseAdapter
+
+  EmailNotificationObserver --> EmailSenderAdapter : utiliza 1
+  PushNotificationObserver --> PushNotificationAdapter : utiliza 1
 }
-
-' ====================================
-' PATRÓN FACTORY
-' ====================================
-package "Factory Pattern" <<Rectangle>> LIGHTYELLOW {
-    class PartidoFactory {
-        + crearPartido()
-        + crearPartidoPersonalizado()
-        + crearPartidoRapido()
-    }
-}
-
-' ====================================
-' DTOs
-' ====================================
-package "DTOs" <<Rectangle>> {
-    class UsuarioRegistroDTO {
-        - nombreUsuario
-        - email
-        - nivelJuego
-    }
-    
-    class PartidoCreateDTO {
-        - tipoDeporte
-        - organizadorId
-        - fechaHora
-    }
-}
-
-' ====================================
-' RELACIONES MVC
-' ====================================
-UsuarioController --> UsuarioService : usa
-PartidoController --> PartidoService : usa
-
-UsuarioService --> UsuarioRepository : usa
-PartidoService --> PartidoRepository : usa
-PartidoService --> UsuarioService : usa
-PartidoSchedulerService --> PartidoRepository : usa
-
-UsuarioRepository --> Usuario : persiste
-PartidoRepository --> Partido : persiste
-
-Usuario --> NivelJuego : tiene
-Usuario "1" --> "*" Partido : participa en
-Partido --> Usuario : organizador
-Partido --> TipoDeporte : tipo
-Partido --> NivelJuego : nivel
-
-' ====================================
-' RELACIONES STRATEGY
-' ====================================
-EmparejamientoStrategy <|.. NivelHabilidadStrategy : implements
-EmparejamientoStrategy <|.. CercaniaStrategy : implements
-EmparejamientoStrategy <|.. HistorialStrategy : implements
-
-PartidoService --> EmparejamientoStrategy : usa
-PartidoService --> NivelHabilidadStrategy : usa
-PartidoService --> CercaniaStrategy : usa
-PartidoService --> HistorialStrategy : usa
-
-' ====================================
-' RELACIONES STATE
-' ====================================
-EstadoPartido <|.. NecesitamosJugadoresState : implements
-EstadoPartido <|.. PartidoArmadoState : implements
-EstadoPartido <|.. ConfirmadoState : implements
-EstadoPartido <|.. EnJuegoState : implements
-EstadoPartido <|.. FinalizadoState : implements
-EstadoPartido <|.. CanceladoState : implements
-
-Partido --> EstadoPartido : tiene estado actual
-
-' ====================================
-' RELACIONES OBSERVER
-' ====================================
-Partido --|> PartidoObservable : extends
-PartidoObservable --> NotificacionObserver : notifica a
-
-NotificacionObserver <|.. EmailNotificationObserver : implements
-NotificacionObserver <|.. PushNotificationObserver : implements
-
-EmailNotificationObserver --> NotificacionServiceAdapter : usa
-PushNotificationObserver --> NotificacionServiceAdapter : usa
-
-' ====================================
-' RELACIONES ADAPTER
-' ====================================
-NotificacionServiceAdapter <|.. EmailServiceAdapter : implements
-NotificacionServiceAdapter <|.. FirebaseServiceAdapter : implements
-
-PartidoService --> EmailServiceAdapter : usa
-PartidoService --> FirebaseServiceAdapter : usa
-
-' ====================================
-' RELACIONES FACTORY
-' ====================================
-PartidoFactory ..> Partido : crea
-PartidoService --> PartidoFactory : usa
-
-' ====================================
-' RELACIONES DTOs
-' ====================================
-UsuarioController ..> UsuarioRegistroDTO : usa
-PartidoController ..> PartidoCreateDTO : usa
-
-note right of EmparejamientoStrategy
-  <b>STRATEGY PATTERN</b>
-  Permite cambiar dinámicamente
-  el algoritmo de emparejamiento
-  de jugadores
-end note
-
-note right of EstadoPartido
-  <b>STATE PATTERN</b>
-  Gestiona transiciones de estado
-  del partido de forma robusta
-end note
-
-note right of PartidoObservable
-  <b>OBSERVER PATTERN</b>
-  Desacopla notificaciones
-  del núcleo del negocio
-end note
-
-note right of NotificacionServiceAdapter
-  <b>ADAPTER PATTERN</b>
-  Unifica diferentes servicios
-  bajo una interfaz común
-end note
-
-note right of PartidoFactory
-  <b>FACTORY PATTERN</b>
-  Centraliza creación de
-  objetos complejos
-end note
-
-legend right
-  <b>Sistema Uno Mas - Gestión de Encuentros Deportivos</b>
-  
-  <b>Patrones Implementados:</b>
-  • MVC (Model-View-Controller)
-  • Strategy (Emparejamiento)
-  • State (Estados del Partido)
-  • Observer (Notificaciones)
-  • Adapter (Servicios Externos)
-  • Factory (Creación de Partidos)
-  
-  <b>Tecnologías:</b>
-  • Java 17
-  • Spring Boot 3.2.0
-  • Spring Data JPA
-  • H2 Database
-endlegend
-
 @enduml

@@ -41,23 +41,49 @@ public class Usuario {
     @Column(nullable = false)
     private NivelJuego nivelJuego;
 
-    private String ubicacion; // Latitud,Longitud
+    @Embedded
+    private Ubicacion ubicacion; // Objeto Ubicacion embebido
 
     @ManyToMany(mappedBy = "jugadores")
+    @Builder.Default
     private List<Partido> partidos = new ArrayList<>();
 
     @Column(name = "firebase_token")
     private String firebaseToken; // Token para notificaciones push
 
     @Column(name = "notificaciones_email")
+    @Builder.Default
     private boolean notificacionesEmail = true;
 
     @Column(name = "notificaciones_push")
+    @Builder.Default
     private boolean notificacionesPush = true;
 
     public enum NivelJuego {
         PRINCIPIANTE,
         INTERMEDIO,
         AVANZADO
+    }
+
+    // Métodos de dominio según diagrama
+    
+    /**
+     * Une al usuario a un partido específico.
+     * Agrega el partido a la lista de partidos del usuario.
+     */
+    public void unirseAPartido(Partido partido) {
+        if (partido != null && !this.partidos.contains(partido)) {
+            this.partidos.add(partido);
+        }
+    }
+
+    /**
+     * Remueve al usuario de un partido específico.
+     * Elimina el partido de la lista de partidos del usuario.
+     */
+    public void bajarseDePartido(Partido partido) {
+        if (partido != null) {
+            this.partidos.remove(partido);
+        }
     }
 }
