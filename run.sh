@@ -29,6 +29,8 @@ show_usage() {
     echo "  emulador          - Abre el emulador de Android e instala la app"
     echo "  setup-demo        - Configura usuario demo con notificaciones"
     echo "  test              - Ejecuta suite completa de tests (27 tests)"
+    echo "  verificar         - Verifica configuración de notificaciones"
+    echo "  limpiar           - Reinicia el backend con base de datos limpia"
     echo ""
     echo "NOTA: Cada escenario limpia la BD y empieza desde cero"
     echo ""
@@ -98,21 +100,45 @@ clean_database() {
     echo "Deteniendo backend existente..."
     pkill -f "spring-boot:run" 2>/dev/null || true
     pkill -f "unomas-backend" 2>/dev/null || true
+    pkill -f "java.*unomas-backend.*jar" 2>/dev/null || true
     sleep 2
     
-    # Start backend in background
-    echo "Iniciando backend limpio..."
+    # Start backend in background WITH ENVIRONMENT VARIABLES
+    echo "Iniciando backend limpio con configuración de email..."
     cd /Users/juanimoli/Development/uno-mas-tp-adoo
-    nohup ./mvnw spring-boot:run > /tmp/unomas-backend.log 2>&1 &
+    
+    # Load .env file if it exists
+    if [ -f .env ]; then
+        echo "Cargando variables de entorno desde .env..."
+        export $(cat .env | grep -v '^#' | xargs)
+    else
+        echo -e "${YELLOW}⚠ Archivo .env no encontrado. Las notificaciones por email podrían no funcionar.${NC}"
+    fi
+    
+    # Use JAR instead of spring-boot:run to ensure proper environment
+    if [ -f target/unomas-backend-1.0.0.jar ]; then
+        nohup java -jar target/unomas-backend-1.0.0.jar > /tmp/unomas-backend.log 2>&1 &
+    else
+        echo "JAR no encontrado, compilando..."
+        ./mvnw clean package -DskipTests
+        nohup java -jar target/unomas-backend-1.0.0.jar > /tmp/unomas-backend.log 2>&1 &
+    fi
     
     # Wait for backend to be ready
     echo -n "Esperando que el backend esté listo"
-    for i in {1..30}; do
+    for i in {1..40}; do
         if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
             echo ""
             echo -e "${GREEN}✓ Backend reiniciado y listo${NC}"
+            
+            # Verify email configuration
+            if [ -n "$SPRING_MAIL_USERNAME" ]; then
+                echo -e "${GREEN}✓ Configuración de email detectada (${SPRING_MAIL_USERNAME})${NC}"
+            else
+                echo -e "${YELLOW}⚠ Sin configuración de email - solo notificaciones push${NC}"
+            fi
             echo ""
-            sleep 2
+            sleep 3
             return 0
         fi
         echo -n "."
@@ -121,6 +147,7 @@ clean_database() {
     
     echo ""
     echo -e "${RED}✗ Timeout esperando el backend. Ver logs en /tmp/unomas-backend.log${NC}"
+    tail -50 /tmp/unomas-backend.log
     exit 1
 }
 
@@ -129,9 +156,25 @@ create_demo_user() {
     local deporte=$1
     local timestamp=$2
     
+    # Try to find existing user first
+    all_users=$(curl -s "$BASE_URL/api/usuarios")
+    existing_user=$(echo "$all_users" | grep -B 10 "facundocarrizo99@gmail.com" | grep -oE '"id":\s*[0-9]+' | head -1 | grep -oE '[0-9]+')
+    
+    if [ -n "$existing_user" ]; then
+        echo -e "${YELLOW}Usuario con email facundocarrizo99@gmail.com ya existe (ID: $existing_user)${NC}"
+        USER1_ID=$existing_user
+        
+        # Update push token
+        curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
+            -H "$CONTENT_TYPE" \
+            -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
+        return
+    fi
+    
+    # Create new user
     USER1_DATA='{
         "nombreUsuario": "org_'$timestamp'",
-        "email": "dambolenamarian@gmail.com",
+        "email": "facundocarrizo99@gmail.com",
         "contrasena": "demo123",
         "nivelJuego": "AVANZADO",
         "deporteFavorito": "'$deporte'",
@@ -147,21 +190,16 @@ create_demo_user() {
     
     if [ "$http_status" -eq "201" ] || [ "$http_status" -eq "200" ]; then
         USER1_ID=$(extract_id "$body")
+        echo -e "${GREEN}Usuario creado exitosamente (ID: $USER1_ID)${NC}"
     else
-        # Si el email ya existe, buscar el usuario
-        if echo "$body" | grep -qi "ya existe\|already"; then
-            all_users=$(curl -s "$BASE_URL/api/usuarios")
-            USER1_ID=$(echo "$all_users" | grep -B 10 "dambolenamarian@gmail.com" | grep -oE '"id":\s*[0-9]+' | head -1 | grep -oE '[0-9]+')
-        else
-            echo -e "${RED}Error creando usuario: $body${NC}"
-            exit 1
-        fi
+        echo -e "${RED}Error creando usuario: $body${NC}"
+        exit 1
     fi
     
     # Configurar token Firebase
     curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
         -H "$CONTENT_TYPE" \
-        -d '{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}' > /dev/null
+        -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
 }
 
 # Function to create secondary user
@@ -189,16 +227,17 @@ create_secondary_user() {
 # ESCENARIO 1: PARTIDO FINALIZADO (Caso Feliz Completo)
 # ============================================================================
 escenario_finalizado() {
-    clean_database
-    
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║  ESCENARIO 1: PARTIDO FINALIZADO (Caso Feliz Completo)   ║${NC}"
+    echo -e "${BLUE}║  ESCENARIO 1: PARTIDO FINALIZADO (Caso Feliz Completo)     ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estados que veremos:"
     echo "  1. BUSCANDO_JUGADORES → 2. PARTIDO_ARMADO → 3. CONFIRMADO → 4. EN_JUEGO → 5. FINALIZADO"
     echo ""
     echo -e "${YELLOW}Notificaciones esperadas: 4 (armado, confirmado, iniciado, finalizado)${NC}"
+    echo ""
+    echo -e "${YELLOW}NOTA: Este escenario usa la base de datos actual sin reiniciar.${NC}"
+    echo -e "${YELLOW}      Para limpiar la BD, detén el backend y reinícialo.${NC}"
     echo ""
     
     # Crear usuarios
@@ -237,44 +276,49 @@ escenario_finalizado() {
     echo -e "${YELLOW}Paso 3: Usuarios se unen al partido...${NC}"
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER1_ID" > /dev/null
     echo -e "${GREEN}✓ Organizador unido${NC}"
-    sleep 1
+    sleep 2
     
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 1 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
-    sleep 2
     
     # Confirmar
     echo -e "${YELLOW}Paso 4: Confirmando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/confirmar" > /dev/null
     echo -e "${GREEN}✓ Partido confirmado${NC}"
     echo -e "  Transición: PARTIDO_ARMADO → ${BLUE}CONFIRMADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 2 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
-    sleep 2
     
     # Iniciar
     echo -e "${YELLOW}Paso 5: Iniciando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/iniciar" > /dev/null
     echo -e "${GREEN}✓ Partido iniciado${NC}"
     echo -e "  Transición: CONFIRMADO → ${BLUE}EN_JUEGO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 3 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
-    sleep 2
     
     # Finalizar
     echo -e "${YELLOW}Paso 6: Finalizando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/finalizar" > /dev/null
     echo -e "${GREEN}✓ Partido finalizado${NC}"
     echo -e "  Transición: EN_JUEGO → ${BLUE}FINALIZADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 4 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
     
     # Resumen
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE            ║${NC}"
+    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE             ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estado final: ${GREEN}FINALIZADO${NC}"
@@ -282,7 +326,7 @@ escenario_finalizado() {
     echo "Notificaciones enviadas: 4"
     echo ""
     echo "Verificar:"
-    echo "  📧 Email: dambolenamarian@gmail.com (4 emails)"
+    echo "  📧 Email: facundocarrizo99@gmail.com (4 emails)"
     echo "  📱 Notificaciones push en dispositivo"
     echo ""
 }
@@ -291,10 +335,8 @@ escenario_finalizado() {
 # ESCENARIO 2: PARTIDO CANCELADO
 # ============================================================================
 escenario_cancelado() {
-    clean_database
-    
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║        ESCENARIO 2: PARTIDO CANCELADO                     ║${NC}"
+    echo -e "${BLUE}║        ESCENARIO 2: PARTIDO CANCELADO                      ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estados que veremos:"
@@ -339,26 +381,29 @@ escenario_cancelado() {
     echo -e "${YELLOW}Paso 3: Usuarios se unen al partido...${NC}"
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER1_ID" > /dev/null
     echo -e "${GREEN}✓ Organizador unido${NC}"
-    sleep 1
+    sleep 2
     
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 1 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
-    sleep 2
     
     # Cancelar (por mal clima, falta de jugadores, etc)
     echo -e "${YELLOW}Paso 4: Cancelando partido (ej: mal clima)...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/cancelar" > /dev/null
     echo -e "${GREEN}✓ Partido cancelado${NC}"
     echo -e "  Transición: PARTIDO_ARMADO → ${BLUE}CANCELADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 2 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
     
     # Resumen
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE            ║${NC}"
+    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE             ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estado final: ${RED}CANCELADO${NC}"
@@ -373,10 +418,8 @@ escenario_cancelado() {
 # ESCENARIO 3: PARTIDO_ARMADO (Sin Confirmar)
 # ============================================================================
 escenario_armado() {
-    clean_database
-    
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║    ESCENARIO 3: PARTIDO_ARMADO (Equipo completo)         ║${NC}"
+    echo -e "${BLUE}║    ESCENARIO 3: PARTIDO_ARMADO (Equipo completo)           ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estados que veremos:"
@@ -421,18 +464,19 @@ escenario_armado() {
     echo -e "${YELLOW}Paso 3: Usuarios se unen al partido...${NC}"
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER1_ID" > /dev/null
     echo -e "${GREEN}✓ Organizador unido${NC}"
-    sleep 1
+    sleep 2
     
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Notificación 1 enviada${NC}"
+    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
+    sleep 5
+    echo -e "  ✓ Notificaciones enviadas"
     echo ""
-    sleep 1
     
     # Resumen
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE            ║${NC}"
+    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE             ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estado final: ${YELLOW}PARTIDO_ARMADO${NC}"
@@ -447,10 +491,8 @@ escenario_armado() {
 # ESCENARIO 4: BUSCANDO_JUGADORES (Partido Incompleto)
 # ============================================================================
 escenario_buscando() {
-    clean_database
-    
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   ESCENARIO 4: BUSCANDO_JUGADORES (Equipo incompleto)    ║${NC}"
+    echo -e "${BLUE}║   ESCENARIO 4: BUSCANDO_JUGADORES (Equipo incompleto)      ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estados que veremos:"
@@ -500,7 +542,7 @@ escenario_buscando() {
     
     # Resumen
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE            ║${NC}"
+    echo -e "${GREEN}║              ESCENARIO COMPLETADO EXITOSAMENTE             ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Estado final: ${BLUE}BUSCANDO_JUGADORES${NC}"
@@ -517,7 +559,7 @@ escenario_buscando() {
 # ============================================================================
 abrir_emulador() {
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║          INICIANDO EMULADOR DE ANDROID Y APP              ║${NC}"
+    echo -e "${BLUE}║          INICIANDO EMULADOR DE ANDROID Y APP               ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     
@@ -559,7 +601,7 @@ abrir_emulador() {
     echo ""
     
     # Use first emulator or ask user
-    EMULATOR_NAME=$(echo "$emulator_list" | head -1)
+    EMULATOR_NAME=$(echo "$emulator_list" | tail -1)
     echo -e "${YELLOW}Usando emulador: $EMULATOR_NAME${NC}"
     echo ""
     
@@ -615,7 +657,7 @@ abrir_emulador() {
             
             echo ""
             echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-            echo -e "${GREEN}║              EMULADOR Y APP LISTOS                        ║${NC}"
+            echo -e "${GREEN}║              EMULADOR Y APP LISTOS                         ║${NC}"
             echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
             echo ""
             echo "La app 'Uno Mas' está corriendo en el emulador."
@@ -644,7 +686,7 @@ setup_demo_user() {
     echo -e "${YELLOW}1. Creando usuario de demo...${NC}"
     DEMO_USER='{
         "nombreUsuario": "demo_notificaciones",
-        "email": "dambolenamarian@gmail.com",
+        "email": "facundocarrizo99@gmail.com",
         "contrasena": "demo123",
         "nivelJuego": "AVANZADO",
         "deporteFavorito": "FUTBOL",
@@ -689,7 +731,7 @@ setup_demo_user() {
 
     # 2. Configurar token de Firebase
     echo -e "${YELLOW}2. Configurando token de Firebase para notificaciones push...${NC}"
-    PUSH_TOKEN='{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}'
+    PUSH_TOKEN='{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}'
 
     response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X PUT "$BASE_URL/api/usuarios/$USER_ID/push-token" \
         -H "$CONTENT_TYPE" \
@@ -709,7 +751,7 @@ setup_demo_user() {
     echo -e "${YELLOW}3. Verificando configuración final...${NC}"
     usuario=$(curl -s "$BASE_URL/api/usuarios/$USER_ID")
 
-    echo "$usuario" | grep -q "dambolenamarian@gmail.com" && echo -e "${GREEN}✓ Email configurado: dambolenamarian@gmail.com${NC}"
+    echo "$usuario" | grep -q "facundocarrizo99@gmail.com" && echo -e "${GREEN}✓ Email configurado: facundocarrizo99@gmail.com${NC}"
     echo "$usuario" | grep -q '"notificacionesEmail":true' && echo -e "${GREEN}✓ Notificaciones por email: ACTIVADAS${NC}"
     echo "$usuario" | grep -q '"notificacionesPush":true' && echo -e "${GREEN}✓ Notificaciones push: ACTIVADAS${NC}"
     echo "$usuario" | grep -q "efQbd6s2QQ6dfGt8ymNKgU" && echo -e "${GREEN}✓ Token de Firebase configurado${NC}"
@@ -720,7 +762,7 @@ setup_demo_user() {
     echo "Detalles del usuario de demo:"
     echo "  - ID: $USER_ID"
     echo "  - Usuario: demo_notificaciones"
-    echo "  - Email: dambolenamarian@gmail.com"
+    echo "  - Email: facundocarrizo99@gmail.com"
     echo "  - Nivel: AVANZADO"
     echo "  - Deporte favorito: FUTBOL"
     echo "  - Notificaciones Email: ✓ ACTIVADAS"
@@ -747,7 +789,7 @@ run_demo() {
     fi
     
     echo -e "${BLUE}Usuario principal (recibirá todas las notificaciones):${NC}"
-    echo "  Email: dambolenamarian@gmail.com"
+    echo "  Email: facundocarrizo99@gmail.com"
     echo "  ID: $DEMO_USER_ID"
     echo ""
 
@@ -795,7 +837,7 @@ run_demo() {
     echo -e "${YELLOW}3. Usuario demo se une al partido...${NC}"
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$DEMO_USER_ID" > /dev/null
     echo -e "${GREEN}✓ Usuario demo unido${NC}"
-    echo -e "${BLUE}📧 Notificación enviada a: dambolenamarian@gmail.com${NC}"
+    echo -e "${BLUE}📧 Notificación enviada a: facundocarrizo99@gmail.com${NC}"
     echo ""
     sleep 2
 
@@ -804,7 +846,7 @@ run_demo() {
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Usuario 2 unido - Equipo completo!${NC}"
     echo -e "  Estado cambia: BUSCANDO_JUGADORES → PARTIDO_ARMADO"
-    echo -e "${BLUE}📧 Notificación enviada a: dambolenamarian@gmail.com${NC}"
+    echo -e "${BLUE}📧 Notificación enviada a: facundocarrizo99@gmail.com${NC}"
     echo -e "${BLUE}📱 Notificación push enviada a Firebase${NC}"
     echo ""
     sleep 2
@@ -814,7 +856,7 @@ run_demo() {
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/confirmar" > /dev/null
     echo -e "${GREEN}✓ Partido confirmado${NC}"
     echo -e "  Estado cambia: PARTIDO_ARMADO → CONFIRMADO"
-    echo -e "${BLUE}📧 Notificación enviada a: dambolenamarian@gmail.com${NC}"
+    echo -e "${BLUE}📧 Notificación enviada a: facundocarrizo99@gmail.com${NC}"
     echo -e "${BLUE}📱 Notificación push enviada a Firebase${NC}"
     echo ""
     sleep 2
@@ -824,7 +866,7 @@ run_demo() {
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/iniciar" > /dev/null
     echo -e "${GREEN}✓ Partido iniciado${NC}"
     echo -e "  Estado cambia: CONFIRMADO → EN_JUEGO"
-    echo -e "${BLUE}📧 Notificación enviada a: dambolenamarian@gmail.com${NC}"
+    echo -e "${BLUE}📧 Notificación enviada a: facundocarrizo99@gmail.com${NC}"
     echo -e "${BLUE}📱 Notificación push enviada a Firebase${NC}"
     echo ""
     sleep 2
@@ -834,14 +876,14 @@ run_demo() {
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/finalizar" > /dev/null
     echo -e "${GREEN}✓ Partido finalizado${NC}"
     echo -e "  Estado cambia: EN_JUEGO → FINALIZADO"
-    echo -e "${BLUE}📧 Notificación enviada a: dambolenamarian@gmail.com${NC}"
+    echo -e "${BLUE}📧 Notificación enviada a: facundocarrizo99@gmail.com${NC}"
     echo -e "${BLUE}📱 Notificación push enviada a Firebase${NC}"
     echo ""
 
     echo -e "${GREEN}=== Demo Completada ===${NC}"
     echo ""
     echo "Resumen de notificaciones enviadas:"
-    echo "  📧 Emails enviados a: dambolenamarian@gmail.com"
+    echo "  📧 Emails enviados a: facundocarrizo99@gmail.com"
     echo "  📱 Notificaciones push al dispositivo configurado"
     echo ""
     echo "Total de transiciones de estado:"
@@ -924,7 +966,7 @@ make_request GET "$BASE_URL/api/usuarios/$USER1_ID" "" 200 "Get User 1"
 make_request GET "$BASE_URL/api/usuarios" "" 200 "Get All Users"
 
 # Test 6: Update User 1 Push Token
-PUSH_TOKEN_DATA='{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}'
+PUSH_TOKEN_DATA='{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}'
 make_request PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" "$PUSH_TOKEN_DATA" 200 "Update User 1 Push Token"
 
 # Test 7: Create Match
@@ -1078,6 +1120,109 @@ echo "  - MVC Pattern (Controller/Service/Repository)"
 }
 
 # ============================================================================
+# VERIFICAR CONFIGURACIÓN
+# ============================================================================
+verificar_configuracion() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║       VERIFICACIÓN DE CONFIGURACIÓN DE NOTIFICACIONES      ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Check .env file
+    echo -e "${YELLOW}1. Verificando archivo .env...${NC}"
+    if [ -f .env ]; then
+        echo -e "${GREEN}✓ Archivo .env encontrado${NC}"
+        
+        # Load and check variables
+        export $(cat .env | grep -v '^#' | xargs) 2>/dev/null
+        
+        if [ -n "$SPRING_MAIL_USERNAME" ]; then
+            echo -e "${GREEN}✓ SPRING_MAIL_USERNAME configurado: $SPRING_MAIL_USERNAME${NC}"
+        else
+            echo -e "${RED}✗ SPRING_MAIL_USERNAME no configurado${NC}"
+        fi
+        
+        if [ -n "$SPRING_MAIL_PASSWORD" ]; then
+            echo -e "${GREEN}✓ SPRING_MAIL_PASSWORD configurado (oculto)${NC}"
+        else
+            echo -e "${RED}✗ SPRING_MAIL_PASSWORD no configurado${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Archivo .env no encontrado${NC}"
+        echo ""
+        echo "Crea el archivo .env con:"
+        echo "  SPRING_MAIL_USERNAME=tu-email@gmail.com"
+        echo "  SPRING_MAIL_PASSWORD=tu-app-password"
+    fi
+    echo ""
+    
+    # Check Firebase config
+    echo -e "${YELLOW}2. Verificando Firebase...${NC}"
+    if [ -f src/main/resources/firebase-service-account.json ]; then
+        echo -e "${GREEN}✓ firebase-service-account.json encontrado${NC}"
+    else
+        echo -e "${YELLOW}⚠ firebase-service-account.json no encontrado (solo push local)${NC}"
+    fi
+    echo ""
+    
+    # Check if backend is running
+    echo -e "${YELLOW}3. Verificando backend...${NC}"
+    if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Backend corriendo en puerto 8080${NC}"
+        
+        # Check health endpoint
+        health=$(curl -s http://localhost:8080/actuator/health)
+        if echo "$health" | grep -q '"status":"UP"'; then
+            echo -e "${GREEN}✓ Backend en estado UP${NC}"
+        else
+            echo -e "${YELLOW}⚠ Backend con problemas${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Backend no está corriendo${NC}"
+        echo "Inicia el backend con: ./run.sh start"
+    fi
+    echo ""
+    
+    # Check compiled JAR
+    echo -e "${YELLOW}4. Verificando compilación...${NC}"
+    if [ -f target/unomas-backend-1.0.0.jar ]; then
+        echo -e "${GREEN}✓ JAR compilado encontrado${NC}"
+        jar_size=$(ls -lh target/unomas-backend-1.0.0.jar | awk '{print $5}')
+        echo "  Tamaño: $jar_size"
+    else
+        echo -e "${YELLOW}⚠ JAR no compilado${NC}"
+        echo "Compila con: ./mvnw clean package -DskipTests"
+    fi
+    echo ""
+    
+    # Summary
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                  RESUMEN DE VERIFICACIÓN                   ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    if [ -f .env ] && [ -n "$SPRING_MAIL_USERNAME" ] && [ -n "$SPRING_MAIL_PASSWORD" ]; then
+        echo -e "${GREEN}✓ Notificaciones por Email: CONFIGURADAS${NC}"
+        echo "  Email configurado: $SPRING_MAIL_USERNAME"
+    else
+        echo -e "${RED}✗ Notificaciones por Email: NO CONFIGURADAS${NC}"
+        echo "  Crea archivo .env con credenciales de Gmail"
+    fi
+    
+    if [ -f src/main/resources/firebase-service-account.json ]; then
+        echo -e "${GREEN}✓ Notificaciones Push: CONFIGURADAS${NC}"
+    else
+        echo -e "${YELLOW}⚠ Notificaciones Push: PARCIAL (solo local)${NC}"
+    fi
+    
+    echo ""
+    echo "Para ejecutar escenarios con notificaciones:"
+    echo "  ./run.sh finalizado    - Escenario completo con 4 notificaciones"
+    echo "  ./run.sh cancelado     - Escenario cancelación con 2 notificaciones"
+    echo ""
+}
+
+# ============================================================================
 # MAIN COMMAND ROUTER
 # ============================================================================
 case "$COMMAND" in
@@ -1104,6 +1249,12 @@ case "$COMMAND" in
         ;;
     test)
         run_tests
+        ;;
+    verificar|verify)
+        verificar_configuracion
+        ;;
+    limpiar|clean|restart)
+        clean_database
         ;;
     *)
         show_usage

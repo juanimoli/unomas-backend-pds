@@ -1,0 +1,589 @@
+@startuml implementation-class-diagram
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+left to right direction
+
+title Diagrama de Clases - Implementación Real\nSistema Uno Mas - Coordinación de Partidos Deportivos
+
+' ===================== DTOs & Enums =====================
+package "DTOs (Request/Response)" {
+  enum TipoEstrategia {
+    NIVEL_HABILIDAD
+    CERCANIA
+    HISTORIAL
+  }
+
+  class UsuarioRegistroDTO {
+    +nombreUsuario: String
+    +email: String
+    +contrasena: String
+    +deporteFavorito: TipoDeporte
+    +nivelJuego: NivelJuego
+    +longitud: Double
+    +latitud: Double
+    +pushToken: String
+    +notificacionesEmail: boolean
+    +notificacionesPush: boolean
+  }
+
+  class UsuarioResponseDTO {
+    +id: Long
+    +nombreUsuario: String
+    +email: String
+    +deporteFavorito: TipoDeporte
+    +nivelJuego: NivelJuego
+    +longitud: Double
+    +latitud: Double
+    +notificacionesEmail: boolean
+    +notificacionesPush: boolean
+  }
+
+  class PartidoCreateDTO {
+    +tipoDeporte: TipoDeporte
+    +cantidadJugadoresRequeridos: Integer
+    +duracionMinutos: Integer
+    +longitud: Double
+    +latitud: Double
+    +direccion: String
+    +fechaHora: LocalDateTime
+    +organizadorId: Long
+    +nivelMinimoRequerido: NivelJuego
+    +nivelMaximoRequerido: NivelJuego
+    +permiteCualquierNivel: Boolean
+    +descripcion: String
+  }
+
+  class PartidoResponseDTO {
+    +id: Long
+    +tipoDeporte: TipoDeporte
+    +cantidadJugadoresRequeridos: int
+    +duracionMinutos: int
+    +longitud: Double
+    +latitud: Double
+    +direccion: String
+    +fechaHora: LocalDateTime
+    +estadoActual: String
+    +organizador: UsuarioResponseDTO
+    +jugadores: List<UsuarioResponseDTO>
+    +nivelMinimoRequerido: NivelJuego
+    +nivelMaximoRequerido: NivelJuego
+    +permiteCualquierNivel: boolean
+    +descripcion: String
+    +fechaCreacion: LocalDateTime
+    +jugadoresFaltantes: int
+    +estaCompleto: boolean
+  }
+
+  class PartidoBusquedaDTO {
+    +tipoDeporte: String
+    +estado: String
+    +nivelMinimo: String
+    +nivelMaximo: String
+    +ubicacion: String
+    +radioKm: Double
+    +estrategiaEmparejamiento: TipoEstrategia
+    +usuarioId: Long
+  }
+
+  class PushTokenUpdateDTO {
+    +pushToken: String
+    +deviceType: String
+    +deviceName: String
+  }
+
+  PartidoResponseDTO --> UsuarioResponseDTO : organizador
+  PartidoResponseDTO --> UsuarioResponseDTO : jugadores *
+}
+
+' ===================== MVC - Controllers =====================
+package "Patrón MVC - Controllers" {
+  class PartidoMatcherController <<@RestController>> {
+    -matcherService: MatcherService
+    -partidoService: PartidoService
+    +unirseAPartido(usuarioId: Long, partidoId: Long): ResponseEntity<PartidoResponseDTO>
+    +confirmarPartido(usuarioId: Long, partidoId: Long): ResponseEntity<PartidoResponseDTO>
+    +bajarseDePartido(usuarioId: Long, partidoId: Long): ResponseEntity<PartidoResponseDTO>
+  }
+
+  class UsuarioController <<@RestController>> {
+    -usuarioService: UsuarioService
+    +registrarUsuario(UsuarioRegistroDTO): ResponseEntity<UsuarioResponseDTO>
+    +obtenerUsuario(id: Long): ResponseEntity<UsuarioResponseDTO>
+    +obtenerTodosUsuarios(): ResponseEntity<List<UsuarioResponseDTO>>
+    +actualizarUsuario(id: Long, UsuarioRegistroDTO): ResponseEntity<UsuarioResponseDTO>
+    +actualizarPushToken(id: Long, PushTokenUpdateDTO): ResponseEntity<UsuarioResponseDTO>
+  }
+
+  class PartidoController <<@RestController>> {
+    -partidoService: PartidoService
+    +crearPartido(PartidoCreateDTO): ResponseEntity<PartidoResponseDTO>
+    +obtenerPartido(id: Long): ResponseEntity<PartidoResponseDTO>
+    +obtenerTodosPartidos(): ResponseEntity<List<PartidoResponseDTO>>
+    +buscarPartidos(PartidoBusquedaDTO): ResponseEntity<List<PartidoResponseDTO>>
+    +confirmarPartido(id: Long): ResponseEntity<PartidoResponseDTO>
+    +iniciarPartido(id: Long): ResponseEntity<PartidoResponseDTO>
+    +finalizarPartido(id: Long): ResponseEntity<PartidoResponseDTO>
+    +cancelarPartido(id: Long): ResponseEntity<Void>
+  }
+
+  PartidoMatcherController --> MatcherService
+  PartidoMatcherController --> PartidoService
+  UsuarioController --> UsuarioService
+  PartidoController --> PartidoService
+}
+
+' ===================== MVC - Services =====================
+package "Patrón MVC - Services" {
+  class MatcherService <<@Service>> {
+    -partidoService: PartidoService
+    -usuarioService: UsuarioService
+    -notificacionServiceAdapter: NotificacionServiceAdapter
+    +unirseAPartido(usuarioId: Long, partidoId: Long): Partido
+    +confirmarPartido(usuarioId: Long, partidoId: Long): Partido
+    +bajarseDePartido(usuarioId: Long, partidoId: Long): Partido
+  }
+
+  class UsuarioService <<@Service>> {
+    -usuarioRepository: UsuarioRepository
+    -passwordEncoder: PasswordEncoder
+    +registrarUsuario(UsuarioRegistroDTO): Usuario
+    +obtenerUsuario(id: Long): Usuario
+    +obtenerTodosUsuarios(): List<Usuario>
+    +actualizarUsuario(id: Long, UsuarioRegistroDTO): Usuario
+    +buscarPorEmail(email: String): Usuario
+    +actualizarPushToken(id: Long, token: String): Usuario
+    +mapearADTO(Usuario): UsuarioResponseDTO
+  }
+
+  class PartidoService <<@Service>> {
+    -partidoRepository: PartidoRepository
+    -usuarioRepository: UsuarioRepository
+    -partidoFactory: PartidoFactory
+    -strategyFactory: EmparejamientoStrategyFactory
+    -emailServiceAdapter: EmailServiceAdapter
+    -firebaseServiceAdapter: FirebaseServiceAdapter
+    +crearPartido(PartidoCreateDTO): Partido
+    +obtenerPartido(id: Long): Partido
+    +obtenerTodosPartidos(): List<Partido>
+    +buscarPartidos(PartidoBusquedaDTO): List<Partido>
+    +confirmarPartido(id: Long): Partido
+    +iniciarPartido(id: Long): Partido
+    +finalizarPartido(id: Long): Partido
+    +cancelarPartido(id: Long): void
+    +configurarObservers(Partido): void
+    +reconfigurarObservers(Partido): void
+    +mapearADTO(Partido): PartidoResponseDTO
+  }
+
+  class PartidoSchedulerService <<@Service>> {
+    -partidoService: PartidoService
+    +verificarPartidosExpirados(): void <<@Scheduled>>
+    +enviarRecordatorios(): void <<@Scheduled>>
+  }
+
+  MatcherService --> UsuarioService
+  MatcherService --> PartidoService
+  UsuarioService --> UsuarioRepository
+  PartidoService --> PartidoRepository
+  PartidoService --> UsuarioRepository
+  PartidoService --> PartidoFactory
+  PartidoService --> EmparejamientoStrategyFactory
+  PartidoSchedulerService --> PartidoService
+}
+
+' ===================== MVC - Repositories =====================
+package "Patrón MVC - Repositories" {
+  interface UsuarioRepository <<JpaRepository>> {
+    +findByEmail(email: String): Optional<Usuario>
+    +existsByEmail(email: String): boolean
+    +existsByNombreUsuario(username: String): boolean
+  }
+
+  interface PartidoRepository <<JpaRepository>> {
+    +findByEstadoActual(estado: String): List<Partido>
+    +findByEstadoActualIn(estados: List<String>): List<Partido>
+    +findByTipoDeporte(deporte: TipoDeporte): List<Partido>
+    +findByOrganizador(organizador: Usuario): List<Partido>
+    +findByEstadoActualAndTipoDeporte(estado: String, deporte: TipoDeporte): List<Partido>
+  }
+
+  UsuarioRepository ..> Usuario : <<manages>>
+  PartidoRepository ..> Partido : <<manages>>
+}
+
+' ===================== Dominio =====================
+package "Dominio - Modelo" {
+  enum TipoDeporte {
+    FUTBOL("Fútbol", 22)
+    FUTBOL_5("Fútbol 5", 10)
+    FUTBOL_7("Fútbol 7", 14)
+    BASQUET("Básquet", 10)
+    VOLEY("Vóley", 12)
+    PADDLE("Pádel", 4)
+    TENIS("Tenis", 4)
+    RUGBY("Rugby", 30)
+    HOCKEY("Hockey", 22)
+    --
+    -nombre: String
+    -jugadoresDefault: int
+    +getNombre(): String
+    +getJugadoresDefault(): int
+  }
+
+  enum NivelJuego {
+    PRINCIPIANTE
+    INTERMEDIO
+    AVANZADO
+  }
+
+  class Ubicacion <<@Embeddable>> {
+    +longitud: Double
+    +latitud: Double
+    +Ubicacion(coordenadas: String)
+    +toString(): String
+    +calcularDistancia(otra: Ubicacion): double
+  }
+
+  class Usuario <<@Entity>> {
+    +id: Long
+    +nombreUsuario: String
+    +email: String
+    +contrasena: String
+    +deporteFavorito: TipoDeporte
+    +nivelJuego: NivelJuego
+    +ubicacion: Ubicacion
+    +partidos: List<Partido>
+    +firebaseToken: String
+    +notificacionesEmail: boolean
+    +notificacionesPush: boolean
+    +unirseAPartido(partido: Partido): void
+    +bajarseDePartido(partido: Partido): void
+  }
+
+  class Partido <<@Entity>> {
+    +id: Long
+    +tipoDeporte: TipoDeporte
+    +cantidadJugadoresRequeridos: int
+    +duracionMinutos: int
+    +ubicacion: Ubicacion
+    +direccion: String
+    +fechaHora: LocalDateTime
+    +estadoActual: String
+    +organizador: Usuario
+    +jugadores: List<Usuario>
+    +nivelMinimoRequerido: NivelJuego
+    +nivelMaximoRequerido: NivelJuego
+    +permiteCualquierNivel: boolean
+    +descripcion: String
+    +fechaCreacion: LocalDateTime
+    +fechaCancelacion: LocalDateTime
+    +motivoCancelacion: String
+    +estado: EstadoPartido <<@Transient>>
+    +observers: List<IListener> <<@Transient>>
+    --
+    +agregarObserver(listener: IListener): void
+    +eliminarObserver(listener: IListener): void
+    +notificarObservadores(): void
+    +cambiarEstado(nuevoEstado: EstadoPartido): void
+    +agregarJugador(usuario: Usuario): void
+    +removerJugador(usuario: Usuario): void
+    +estaCompleto(): boolean
+    +getJugadoresFaltantes(): int
+    +getObservers(): List<IListener>
+  }
+
+  Usuario "0..*" -- "0..*" Partido : participa
+  Partido "1" -- "1" Usuario : organizador
+  Usuario "1" *-- "1" Ubicacion : ubicacion
+  Partido "1" *-- "1" Ubicacion : ubicacion
+  Usuario --> NivelJuego
+  Usuario --> TipoDeporte : deporteFavorito
+  Partido --> TipoDeporte
+  Partido --> NivelJuego : niveles
+}
+
+' ===================== Patrón Factory =====================
+package "Patrón Factory" {
+  class PartidoFactory <<@Component>> {
+    +crearPartido(tipoDeporte: TipoDeporte, organizador: Usuario, cantidadJugadores: int, duracion: int, ubicacion: Ubicacion, direccion: String, fechaHora: LocalDateTime): Partido
+  }
+
+  class EmparejamientoStrategyFactory <<@Component>> {
+    -nivelHabilidadStrategy: NivelHabilidadStrategy
+    -cercaniaStrategy: CercaniaStrategy
+    -historialStrategy: HistorialStrategy
+    +crearEstrategia(tipo: TipoEstrategia): EmparejamientoStrategy
+  }
+
+  PartidoFactory ..> Partido : <<creates>>
+  EmparejamientoStrategyFactory ..> EmparejamientoStrategy : <<creates>>
+  PartidoFactory ..> BuscandoJugadoresState : <<initializes>>
+}
+
+' ===================== Strategy (Emparejamiento) =====================
+package "Patrón Strategy (Emparejamiento)" {
+  interface EmparejamientoStrategy {
+    +esCompatible(usuario: Usuario, partido: Partido): boolean
+    +calcularCompatibilidad(usuario: Usuario, partido: Partido): double
+  }
+
+  class CercaniaStrategy <<@Component>> {
+    +esCompatible(usuario: Usuario, partido: Partido): boolean
+    +calcularCompatibilidad(usuario: Usuario, partido: Partido): double
+  }
+  
+  class NivelHabilidadStrategy <<@Component>> {
+    +esCompatible(usuario: Usuario, partido: Partido): boolean
+    +calcularCompatibilidad(usuario: Usuario, partido: Partido): double
+  }
+  
+  class HistorialStrategy <<@Component>> {
+    +esCompatible(usuario: Usuario, partido: Partido): boolean
+    +calcularCompatibilidad(usuario: Usuario, partido: Partido): double
+  }
+
+  EmparejamientoStrategy <|.. CercaniaStrategy
+  EmparejamientoStrategy <|.. NivelHabilidadStrategy
+  EmparejamientoStrategy <|.. HistorialStrategy
+
+  EmparejamientoStrategyFactory --> EmparejamientoStrategy
+  PartidoService --> EmparejamientoStrategyFactory
+  PartidoBusquedaDTO --> TipoEstrategia
+}
+
+' ===================== State =====================
+package "Patrón State" {
+  interface EstadoPartido {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+    +fromString(nombre: String): EstadoPartido <<static>>
+  }
+
+  class BuscandoJugadoresState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+  
+  class PartidoArmadoState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+  
+  class ConfirmadoState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+  
+  class EnJuegoState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+  
+  class CanceladoState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+  
+  class FinalizadoState {
+    +equipoCompleto(partido: Partido): void
+    +confirmar(partido: Partido): void
+    +iniciar(partido: Partido): void
+    +finalizar(partido: Partido): void
+    +cancelar(partido: Partido): void
+    +getNombre(): String
+  }
+
+  EstadoPartido <|.. BuscandoJugadoresState
+  EstadoPartido <|.. PartidoArmadoState
+  EstadoPartido <|.. ConfirmadoState
+  EstadoPartido <|.. EnJuegoState
+  EstadoPartido <|.. CanceladoState
+  EstadoPartido <|.. FinalizadoState
+
+  Partido --> EstadoPartido : estado
+}
+
+' ===================== Observable/Observer =====================
+package "Patrón Observable/Observer" {
+  interface IObservable {
+    +agregarObserver(observer: IListener): void
+    +eliminarObserver(observer: IListener): void
+    +notificarObservadores(): void
+  }
+
+  interface IListener {
+    +notificar(partido: Partido): void
+  }
+
+  class PartidoListener {
+    -usuario: Usuario
+    -estrategiaNotificacion: IStrategiaNotificacion
+    +PartidoListener(usuario: Usuario, estrategia: IStrategiaNotificacion)
+    +notificar(partido: Partido): void
+  }
+
+  Partido ..|> IObservable
+  PartidoListener ..|> IListener
+  Partido "1" o-- "0..*" IListener : observers
+  PartidoListener --> Usuario
+}
+
+' ===================== Strategy (Notificación) =====================
+package "Patrón Strategy (Notificación)" {
+  interface IStrategiaNotificacion {
+    +enviarNotificacion(usuario: Usuario, mensaje: String): void
+  }
+
+  class EmailNotificationStrategy <<@Component>> {
+    -emailServiceAdapter: EmailServiceAdapter
+    +enviarNotificacion(usuario: Usuario, mensaje: String): void
+  }
+  
+  class PushNotificationStrategy <<@Component>> {
+    -firebaseServiceAdapter: FirebaseServiceAdapter
+    +enviarNotificacion(usuario: Usuario, mensaje: String): void
+  }
+
+  IStrategiaNotificacion <|.. EmailNotificationStrategy
+  IStrategiaNotificacion <|.. PushNotificationStrategy
+
+  PartidoListener --> IStrategiaNotificacion : utiliza
+  PartidoService --> EmailNotificationStrategy
+  PartidoService --> PushNotificationStrategy
+}
+
+' ===================== Adapter =====================
+package "Patrón Adapter" {
+  interface NotificacionServiceAdapter {
+    +enviarNotificacion(destinatario: String, mensaje: String): void
+  }
+  
+  class EmailServiceAdapter <<@Service>> {
+    -javaMailSender: JavaMailSender
+    +enviarNotificacion(destinatario: String, mensaje: String): void
+  }
+  
+  class FirebaseServiceAdapter <<@Service>> {
+    -firebaseApp: FirebaseApp
+    +enviarNotificacion(token: String, mensaje: String): void
+  }
+
+  NotificacionServiceAdapter <|.. EmailServiceAdapter
+  NotificacionServiceAdapter <|.. FirebaseServiceAdapter
+
+  EmailNotificationStrategy --> NotificacionServiceAdapter : emailAdapter
+  PushNotificationStrategy --> NotificacionServiceAdapter : firebaseAdapter
+  MatcherService --> NotificacionServiceAdapter
+}
+
+' ===================== Exception Handling =====================
+package "Exception Handling" {
+  class ResourceNotFoundException <<RuntimeException>> {
+    +ResourceNotFoundException(mensaje: String)
+  }
+
+  class GlobalExceptionHandler <<@ControllerAdvice>> {
+    +handleResourceNotFound(ResourceNotFoundException): ResponseEntity<String>
+    +handleValidationException(MethodArgumentNotValidException): ResponseEntity<Map>
+    +handleGenericException(Exception): ResponseEntity<String>
+  }
+
+  GlobalExceptionHandler ..> ResourceNotFoundException : handles
+}
+
+' ===================== Configuration =====================
+package "Configuration" {
+  class OpenAPIConfig <<@Configuration>> {
+    +customOpenAPI(): OpenAPI
+  }
+
+  class FirebaseConfig <<@Configuration>> {
+    +firebaseApp(): FirebaseApp
+  }
+
+  class JpaConfig <<@Configuration>> {
+    +auditorAware(): AuditorAware<String>
+  }
+}
+
+' ===================== Relaciones entre capas =====================
+PartidoService --> EmailServiceAdapter
+PartidoService --> FirebaseServiceAdapter
+MatcherService --> NotificacionServiceAdapter
+PartidoService --> Partido : manages
+UsuarioService --> Usuario : manages
+
+note top of PartidoMatcherController
+  REST Controller
+  Endpoint: /api/partidos/matcher
+  Maneja uniones/confirmaciones
+end note
+
+note top of PartidoController
+  REST Controller
+  Endpoint: /api/partidos
+  CRUD + State Transitions
+end note
+
+note top of UsuarioController
+  REST Controller
+  Endpoint: /api/usuarios
+  CRUD + Token Push
+end note
+
+note right of Partido
+  Estado persistido como String
+  Objeto EstadoPartido reconstruido
+  con @PostLoad
+  
+  Observers reconfigurados
+  dinámicamente
+end note
+
+note right of Usuario
+  Contraseña hasheada
+  con BCryptPasswordEncoder
+  
+  firebaseToken para push
+  preferences de notificaciones
+end note
+
+note bottom of TipoDeporte
+  Enum rico con metadata
+  Reemplaza String simple
+  jugadoresDefault usado
+  en creación de partidos
+end note
+
+note bottom of Ubicacion
+  Cálculo de distancia
+  con fórmula Haversine
+  
+  Usado en CercaniaStrategy
+end note
+
+@enduml

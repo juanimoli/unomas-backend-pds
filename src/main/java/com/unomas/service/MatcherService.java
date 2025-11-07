@@ -52,11 +52,17 @@ public class MatcherService {
         
         usuario.unirseAPartido(partido);
         
-        // Agregar jugador (puede disparar cambio de estado y notificaciones)
+        // Primero agregar el jugador a la lista
         partido.agregarJugador(usuario);
         
-        // Reconfigurar observers después de agregar el jugador para incluirlo en las notificaciones
+        // Luego reconfigurar observers con TODOS los jugadores incluyendo el nuevo
+        // ANTES de que se dispare el cambio de estado
         partidoService.reconfigurarObservers(partido);
+        
+        // Ahora verificar si el equipo está completo y disparar el cambio de estado
+        if (partido.estaCompleto() && "BUSCANDO_JUGADORES".equals(partido.getEstadoActual())) {
+            partido.getEstado().equipoCompleto(partido);
+        }
         
         usuarioService.guardarUsuario(usuario);
         return partidoService.guardarPartido(partido);

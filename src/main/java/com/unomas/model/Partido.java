@@ -139,16 +139,12 @@ public class Partido implements IObservable {
     }
 
     /**
-     * Agrega un jugador al partido
+     * Agrega un jugador al partido (sin disparar cambio de estado automático)
+     * El servicio es responsable de verificar el estado y notificar
      */
     public void agregarJugador(Usuario usuario) {
         if (!jugadores.contains(usuario)) {
             jugadores.add(usuario);
-            
-            // Si se completó el equipo, cambiar estado
-            if (jugadores.size() >= cantidadJugadoresRequeridos) {
-                estado.equipoCompleto(this);
-            }
         }
     }
 

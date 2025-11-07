@@ -190,6 +190,7 @@ public class PartidoService {
      */
     public PartidoResponseDTO confirmarPartido(Long partidoId) {
         Partido partido = obtenerPartidoEntity(partidoId);
+        configurarObservers(partido); // Reconfigurar observers antes de cambiar estado
         partido.getEstado().confirmar(partido);
         partido = partidoRepository.save(partido);
         
@@ -203,6 +204,7 @@ public class PartidoService {
     public PartidoResponseDTO cancelarPartido(Long partidoId, String motivo) {
         Partido partido = obtenerPartidoEntity(partidoId);
         
+        configurarObservers(partido); // Reconfigurar observers antes de cambiar estado
         partido.setMotivoCancelacion(motivo);
         partido.setFechaCancelacion(LocalDateTime.now());
         partido.getEstado().cancelar(partido);
@@ -217,6 +219,7 @@ public class PartidoService {
      */
     public PartidoResponseDTO iniciarPartido(Long partidoId) {
         Partido partido = obtenerPartidoEntity(partidoId);
+        configurarObservers(partido); // Reconfigurar observers antes de cambiar estado
         partido.getEstado().iniciar(partido);
         partido = partidoRepository.save(partido);
         
@@ -229,6 +232,7 @@ public class PartidoService {
      */
     public PartidoResponseDTO finalizarPartido(Long partidoId) {
         Partido partido = obtenerPartidoEntity(partidoId);
+        configurarObservers(partido); // Reconfigurar observers antes de cambiar estado
         partido.getEstado().finalizar(partido);
         partido = partidoRepository.save(partido);
         

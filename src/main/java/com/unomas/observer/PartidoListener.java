@@ -52,4 +52,23 @@ public class PartidoListener implements IListener {
     public IStrategiaNotificacion getEstrategiaNotificacion() {
         return estrategiaNotificacion;
     }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        
+        PartidoListener that = (PartidoListener) o;
+        
+        // Dos listeners son iguales si notifican al mismo usuario con la misma estrategia
+        return usuario.getId().equals(that.usuario.getId()) &&
+               estrategiaNotificacion.getClass().equals(that.estrategiaNotificacion.getClass());
+    }
+    
+    @Override
+    public int hashCode() {
+        int result = usuario.getId().hashCode();
+        result = 31 * result + estrategiaNotificacion.getClass().hashCode();
+        return result;
+    }
 }
