@@ -1,0 +1,62 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular con gradiente -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="ballGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ecf0f1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fondo principal -->
+  <circle cx="512" cy="512" r="512" fill="url(#bgGradient)"/>
+  
+  <!-- Sombra de la pelota -->
+  <ellipse cx="520" cy="720" rx="180" ry="40" fill="rgba(0,0,0,0.15)"/>
+  
+  <!-- Pelota de fútbol estilizada -->
+  <circle cx="512" cy="512" r="280" fill="url(#ballGradient)" stroke="#2c3e50" stroke-width="8"/>
+  
+  <!-- Patrón hexagonal de pelota de fútbol -->
+  <!-- Hexágono central -->
+  <path d="M 512 340 L 590 380 L 590 460 L 512 500 L 434 460 L 434 380 Z" 
+        fill="#2c3e50" stroke="#2c3e50" stroke-width="4"/>
+  
+  <!-- Pentágonos alrededor -->
+  <path d="M 512 340 L 450 300 L 380 340 L 380 380 L 434 380 Z" 
+        fill="#34495e" stroke="#2c3e50" stroke-width="3"/>
+  
+  <path d="M 590 380 L 640 340 L 680 380 L 650 440 L 590 460 Z" 
+        fill="#34495e" stroke="#2c3e50" stroke-width="3"/>
+  
+  <path d="M 590 460 L 620 540 L 580 600 L 512 580 L 512 500 Z" 
+        fill="#34495e" stroke="#2c3e50" stroke-width="3"/>
+  
+  <path d="M 434 460 L 434 540 L 380 580 L 340 540 L 380 480 Z" 
+        fill="#34495e" stroke="#2c3e50" stroke-width="3"/>
+  
+  <path d="M 434 380 L 340 380 L 300 440 L 340 480 L 380 480 Z" 
+        fill="#34495e" stroke="#2c3e50" stroke-width="3"/>
+  
+  <!-- Líneas de velocidad/movimiento -->
+  <path d="M 200 400 L 280 420" stroke="#ffffff" stroke-width="16" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 180 480 L 260 500" stroke="#ffffff" stroke-width="16" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 190 560 L 270 580" stroke="#ffffff" stroke-width="16" stroke-linecap="round" opacity="0.4"/>
+  
+  <!-- Texto "+1" estilizado -->
+  <g transform="translate(512, 840)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="140" font-weight="bold" 
+          fill="#ffffff" text-anchor="middle" stroke="#2c3e50" stroke-width="6">
+      +1
+    </text>
+  </g>
+  
+  <!-- Detalle: pequeñas estrellas decorativas -->
+  <circle cx="820" cy="200" r="12" fill="#ffffff" opacity="0.8"/>
+  <circle cx="750" cy="280" r="8" fill="#ffffff" opacity="0.6"/>
+  <circle cx="180" cy="250" r="10" fill="#ffffff" opacity="0.7"/>
+  <circle cx="240" cy="180" r="8" fill="#ffffff" opacity="0.6"/>
+</svg>

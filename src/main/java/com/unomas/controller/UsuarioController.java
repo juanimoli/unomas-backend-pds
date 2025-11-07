@@ -2,6 +2,7 @@ package com.unomas.controller;
 
 import com.unomas.dto.UsuarioRegistroDTO;
 import com.unomas.dto.UsuarioResponseDTO;
+import com.unomas.dto.PushTokenUpdateDTO;
 import com.unomas.service.UsuarioService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,6 +53,16 @@ public class UsuarioController {
             @PathVariable Long id,
             @Valid @RequestBody UsuarioRegistroDTO dto) {
         UsuarioResponseDTO usuario = usuarioService.actualizarUsuario(id, dto);
+        return ResponseEntity.ok(usuario);
+    }
+    
+    @PutMapping("/{id}/push-token")
+    @Operation(summary = "Actualizar token de notificaciones push", 
+               description = "Actualiza el token de Expo Push Notifications o Firebase para recibir notificaciones")
+    public ResponseEntity<UsuarioResponseDTO> actualizarPushToken(
+            @PathVariable Long id,
+            @Valid @RequestBody PushTokenUpdateDTO dto) {
+        UsuarioResponseDTO usuario = usuarioService.actualizarPushToken(id, dto);
         return ResponseEntity.ok(usuario);
     }
 }

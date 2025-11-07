@@ -17,23 +17,20 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
     
     @Override
     public boolean esCompatible(Usuario usuario, Partido partido) {
-        // Si el partido permite cualquier nivel, siempre es compatible
         if (partido.isPermiteCualquierNivel()) {
             return true;
         }
         
-        // Si hay nivel mínimo y el usuario no lo cumple
-        if (partido.getNivelMinimoRequerido() != null) {
-            if (compararNiveles(usuario.getNivelJuego(), partido.getNivelMinimoRequerido()) < 0) {
-                return false;
-            }
+        int nivelUsuario = getNivelNumerico(usuario.getNivelJuego());
+        
+        if (partido.getNivelMinimoRequerido() != null 
+            && nivelUsuario < getNivelNumerico(partido.getNivelMinimoRequerido())) {
+            return false;
         }
         
-        // Si hay nivel máximo y el usuario lo excede
-        if (partido.getNivelMaximoRequerido() != null) {
-            if (compararNiveles(usuario.getNivelJuego(), partido.getNivelMaximoRequerido()) > 0) {
-                return false;
-            }
+        if (partido.getNivelMaximoRequerido() != null 
+            && nivelUsuario > getNivelNumerico(partido.getNivelMaximoRequerido())) {
+            return false;
         }
         
         return true;
@@ -55,23 +52,14 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
             return 0.0;
         }
         
-        // Bonus si el deporte coincide con el favorito del usuario
-        double score = 50.0;
-        if (partido.getTipoDeporte() == usuario.getDeporteFavorito()) {
-            score += 25.0;
-        }
+        double score = partido.getTipoDeporte() == usuario.getDeporteFavorito() ? 75.0 : 50.0;
         
-        // Calcular similitud de nivel
         if (!partido.isPermiteCualquierNivel()) {
-            // Obtener el nivel "ideal" del partido (promedio de jugadores actuales)
             double nivelPromedio = calcularNivelPromedio(partido);
-            double nivelUsuario = getNivelNumerico(usuario.getNivelJuego());
-            
-            // Mientras más cercano al promedio, mejor
-            double diferencia = Math.abs(nivelPromedio - nivelUsuario);
-            score += Math.max(0, 25.0 - (diferencia * 12.5)); // Max 25 puntos
+            double diferencia = Math.abs(nivelPromedio - getNivelNumerico(usuario.getNivelJuego()));
+            score += Math.max(0, 25.0 - (diferencia * 12.5));
         } else {
-            score += 15.0; // Bonus menor si acepta cualquier nivel
+            score += 15.0;
         }
         
         return Math.min(100.0, score);
@@ -87,17 +75,6 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
         return TipoEstrategia.NIVEL_HABILIDAD;
     }
     
-    /**
-     * Compara dos niveles de juego
-     * @return -1 si nivel1 < nivel2, 0 si son iguales, 1 si nivel1 > nivel2
-     */
-    private int compararNiveles(Usuario.NivelJuego nivel1, Usuario.NivelJuego nivel2) {
-        return Integer.compare(getNivelNumerico(nivel1), getNivelNumerico(nivel2));
-    }
-    
-    /**
-     * Convierte nivel de juego a valor numérico
-     */
     private int getNivelNumerico(Usuario.NivelJuego nivel) {
         return switch (nivel) {
             case PRINCIPIANTE -> 1;
@@ -106,20 +83,14 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
         };
     }
     
-    /**
-     * Calcula el nivel promedio de los jugadores del partido
-     */
     private double calcularNivelPromedio(Partido partido) {
         if (partido.getJugadores().isEmpty()) {
-            // Si no hay jugadores, usar el nivel del organizador
             return getNivelNumerico(partido.getOrganizador().getNivelJuego());
         }
         
-        double suma = partido.getJugadores().stream()
+        return partido.getJugadores().stream()
             .mapToInt(j -> getNivelNumerico(j.getNivelJuego()))
             .average()
-            .orElse(2.0); // Por defecto, nivel intermedio
-        
-        return suma;
+            .orElse(2.0);
     }
 }

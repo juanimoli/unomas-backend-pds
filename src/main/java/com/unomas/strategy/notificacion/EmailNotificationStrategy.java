@@ -27,25 +27,16 @@ public class EmailNotificationStrategy implements IStrategiaNotificacion {
     @Override
     public void enviarNotificacion(Usuario usuario, Partido partido) {
         if (!usuario.isNotificacionesEmail()) {
-            logger.debug("Usuario {} tiene notificaciones email desactivadas", usuario.getNombreUsuario());
             return;
         }
         
-        logger.info("Enviando notificación por EMAIL a {} para partido {}", 
-                   usuario.getEmail(), partido.getId());
-        
         String asunto = construirAsunto(partido);
-        String cuerpo = construirMensajeEmail(partido, usuario);
+        String mensaje = construirMensaje(usuario, partido);
         
         try {
-            emailAdapter.enviarNotificacion(
-                usuario.getEmail(),
-                asunto,
-                cuerpo
-            );
-            logger.info("Email enviado exitosamente a: {}", usuario.getEmail());
+            emailAdapter.enviarNotificacion(usuario.getEmail(), asunto, mensaje);
         } catch (Exception e) {
-            logger.error("Error al enviar email a {}: {}", usuario.getEmail(), e.getMessage());
+            logger.error("Error enviando email a {}: {}", usuario.getEmail(), e.getMessage());
         }
     }
     
@@ -53,7 +44,7 @@ public class EmailNotificationStrategy implements IStrategiaNotificacion {
         return "Actualización del Partido - " + partido.getTipoDeporte().getNombre();
     }
     
-    private String construirMensajeEmail(Partido partido, Usuario destinatario) {
+    private String construirMensaje(Usuario destinatario, Partido partido) {
         return String.format("""
             Hola %s,
             

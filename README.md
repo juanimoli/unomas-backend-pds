@@ -64,8 +64,3 @@ src/main/java/com/unomas/
 
 Java 17 • Spring Boot 3.2.0 • Spring Data JPA • H2 Database • Lombok • SpringDoc OpenAPI
 
-## 📚 Documentación
-
-- `PATRONES.md` - Detalles de cada patrón
-- `SCRIPTS_README.md` - Guía de scripts
-- `TEST_API_MANUAL.md` - Pruebas manuales

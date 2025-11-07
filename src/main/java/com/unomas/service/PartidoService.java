@@ -1,6 +1,7 @@
 package com.unomas.service;
 
 import com.unomas.adapter.EmailServiceAdapter;
+import com.unomas.adapter.ExpoPushServiceAdapter;
 import com.unomas.adapter.FirebaseServiceAdapter;
 import com.unomas.dto.*;
 import com.unomas.exception.ResourceNotFoundException;
@@ -16,8 +17,6 @@ import com.unomas.strategy.emparejamiento.EmparejamientoStrategy;
 import com.unomas.strategy.emparejamiento.TipoEstrategia;
 import com.unomas.strategy.notificacion.EmailNotificationStrategy;
 import com.unomas.strategy.notificacion.PushNotificationStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,8 +40,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class PartidoService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(PartidoService.class);
 
     @Autowired
     private PartidoRepository partidoRepository;
@@ -60,29 +57,23 @@ public class PartidoService {
     private EmailServiceAdapter emailAdapter; // Adapter Pattern
     
     @Autowired
-    private FirebaseServiceAdapter firebaseAdapter; // Adapter Pattern
+    private FirebaseServiceAdapter firebaseAdapter; // Adapter Pattern (Firebase nativo)
+    
+    @Autowired
+    private ExpoPushServiceAdapter expoPushAdapter; // Adapter Pattern (Expo Push)
     
     /**
      * Crea un nuevo partido
-     * Utiliza Factory Pattern para crear el partido
-     * Utiliza Observer Pattern para notificaciones
      */
     public PartidoResponseDTO crearPartido(PartidoCreateDTO dto) {
-        logger.info("Creando nuevo partido de {}", dto.getTipoDeporte());
-        
-        // Obtener el organizador
         Usuario organizador = usuarioService.obtenerUsuarioEntity(dto.getOrganizadorId());
-        
-        // Crear objeto Ubicacion desde coordenadas
         Ubicacion ubicacion = new Ubicacion(dto.getLongitud(), dto.getLatitud());
         
-        // Usar Factory para crear el partido
         Partido partido;
         if (dto.getCantidadJugadoresRequeridos() != null || 
             dto.getNivelMinimoRequerido() != null || 
             dto.getNivelMaximoRequerido() != null) {
             
-            // Partido personalizado
             partido = partidoFactory.crearPartidoPersonalizado(
                 dto.getTipoDeporte(),
                 organizador,
@@ -114,7 +105,6 @@ public class PartidoService {
         // Configurar observers (Patrón Observer)
         configurarObservers(partido);
         
-        logger.info("Partido creado exitosamente con ID: {}", partido.getId());
         
         // Notificar a usuarios con el mismo deporte favorito
         notificarNuevoPartido(partido);
@@ -127,7 +117,6 @@ public class PartidoService {
      * Utiliza Strategy Pattern para filtrar según diferentes criterios
      */
     public List<PartidoResponseDTO> buscarPartidos(PartidoBusquedaDTO busqueda) {
-        logger.info("Buscando partidos con criterios: {}", busqueda);
         
         List<Partido> partidos = partidoRepository.findAll();
         
@@ -188,7 +177,6 @@ public class PartidoService {
      * Utiliza Observer Pattern para notificar cambios
      */
     public PartidoResponseDTO unirseAPartido(Long partidoId, Long usuarioId) {
-        logger.info("Usuario {} intentando unirse al partido {}", usuarioId, partidoId);
         
         Partido partido = obtenerPartidoEntity(partidoId);
         Usuario usuario = usuarioService.obtenerUsuarioEntity(usuarioId);
@@ -216,7 +204,6 @@ public class PartidoService {
         
         partido = partidoRepository.save(partido);
         
-        logger.info("Usuario {} se unió al partido {} exitosamente", usuarioId, partidoId);
         
         return mapearADTO(partido);
     }
@@ -226,7 +213,6 @@ public class PartidoService {
      * Patrón State: Cambia el estado del partido
      */
     public PartidoResponseDTO confirmarPartido(Long partidoId) {
-        logger.info("Confirmando partido {}", partidoId);
         
         Partido partido = obtenerPartidoEntity(partidoId);
         
@@ -243,7 +229,6 @@ public class PartidoService {
      * Patrón State: Cambia el estado del partido
      */
     public PartidoResponseDTO cancelarPartido(Long partidoId, String motivo) {
-        logger.info("Cancelando partido {} por: {}", partidoId, motivo);
         
         Partido partido = obtenerPartidoEntity(partidoId);
         
@@ -263,7 +248,6 @@ public class PartidoService {
      * Patrón State: Cambia el estado del partido
      */
     public PartidoResponseDTO iniciarPartido(Long partidoId) {
-        logger.info("Iniciando partido {}", partidoId);
         
         Partido partido = obtenerPartidoEntity(partidoId);
         
@@ -280,7 +264,6 @@ public class PartidoService {
      * Patrón State: Cambia el estado del partido
      */
     public PartidoResponseDTO finalizarPartido(Long partidoId) {
-        logger.info("Finalizando partido {}", partidoId);
         
         Partido partido = obtenerPartidoEntity(partidoId);
         
@@ -295,13 +278,19 @@ public class PartidoService {
     /**
      * Configura los observers del partido (Patrón Observer + Strategy + Adapter)
      * Crea listeners para cada jugador, con estrategias de notificación según preferencias.
+     * 
+     * Usa ExpoPushAdapter para apps Expo Go (iOS sin cuenta developer) 
+     * y FirebaseAdapter para apps nativas.
      */
     private void configurarObservers(Partido partido) {
-        logger.debug("Configurando observers para partido {}", partido.getId());
         
         // Crear estrategias de notificación
         EmailNotificationStrategy emailStrategy = new EmailNotificationStrategy(emailAdapter);
-        PushNotificationStrategy pushStrategy = new PushNotificationStrategy(firebaseAdapter);
+        
+        // Usar Expo Push si está habilitado, sino Firebase nativo
+        PushNotificationStrategy pushStrategy = expoPushAdapter.isDisponible() 
+            ? new PushNotificationStrategy(expoPushAdapter)
+            : new PushNotificationStrategy(firebaseAdapter);
         
         // Agregar listener para el organizador
         if (partido.getOrganizador() != null) {
@@ -322,20 +311,15 @@ public class PartidoService {
                 partido.agregarObserver(new PartidoListener(jugador, pushStrategy));
             }
         }
-        
-        logger.debug("Configurados {} observers para partido {}", 
-                    partido.getJugadores().size() + 1, partido.getId());
     }
     
     /**
      * Reconfigura los observers después de que se agreguen nuevos jugadores.
-     * Método público para uso desde otros servicios (ej. MatcherService).
      */
     public void reconfigurarObservers(Partido partido) {
         // Limpiar observers existentes y reconfigurar
         partido.getObservers().clear();
         configurarObservers(partido);
-        logger.debug("Observers reconfigurados para partido {}", partido.getId());
     }
     
     /**
@@ -344,7 +328,6 @@ public class PartidoService {
     private void notificarNuevoPartido(Partido partido) {
         // Esta funcionalidad se puede expandir para notificar a usuarios
         // con el deporte favorito coincidente
-        logger.info("Notificando nuevo partido de {} creado", partido.getTipoDeporte());
     }
     
     /**

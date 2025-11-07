@@ -2,12 +2,11 @@ package com.unomas.service;
 
 import com.unomas.dto.UsuarioRegistroDTO;
 import com.unomas.dto.UsuarioResponseDTO;
+import com.unomas.dto.PushTokenUpdateDTO;
 import com.unomas.exception.ResourceNotFoundException;
 import com.unomas.model.Ubicacion;
 import com.unomas.model.Usuario;
 import com.unomas.repository.UsuarioRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +22,6 @@ import java.util.stream.Collectors;
 @Transactional
 public class UsuarioService {
     
-    private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
-    
     @Autowired
     private UsuarioRepository usuarioRepository;
     
@@ -32,29 +29,22 @@ public class UsuarioService {
      * Registra un nuevo usuario
      */
     public UsuarioResponseDTO registrarUsuario(UsuarioRegistroDTO dto) {
-        logger.info("Registrando nuevo usuario: {}", dto.getNombreUsuario());
-        
-        // Validar que no exista el nombre de usuario
         if (usuarioRepository.existsByNombreUsuario(dto.getNombreUsuario())) {
             throw new IllegalArgumentException("El nombre de usuario ya existe");
         }
         
-        // Validar que no exista el email
         if (usuarioRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("El email ya está registrado");
         }
         
-        // Crear objeto Ubicacion si hay coordenadas
-        Ubicacion ubicacion = null;
-        if (dto.getLongitud() != null && dto.getLatitud() != null) {
-            ubicacion = new Ubicacion(dto.getLongitud(), dto.getLatitud());
-        }
+        Ubicacion ubicacion = (dto.getLongitud() != null && dto.getLatitud() != null) 
+            ? new Ubicacion(dto.getLongitud(), dto.getLatitud()) 
+            : null;
         
-        // Crear usuario
         Usuario usuario = Usuario.builder()
                 .nombreUsuario(dto.getNombreUsuario())
                 .email(dto.getEmail())
-                .contrasena(dto.getContrasena()) // En producción, usar encriptación
+                .contrasena(dto.getContrasena())
                 .deporteFavorito(dto.getDeporteFavorito())
                 .nivelJuego(dto.getNivelJuego())
                 .ubicacion(ubicacion)
@@ -63,10 +53,7 @@ public class UsuarioService {
                 .notificacionesPush(dto.isNotificacionesPush())
                 .build();
         
-        Usuario guardado = usuarioRepository.save(usuario);
-        logger.info("Usuario registrado exitosamente con ID: {}", guardado.getId());
-        
-        return mapearADTO(guardado);
+        return mapearADTO(usuarioRepository.save(usuario));
     }
     
     /**
@@ -94,7 +81,6 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
         
-        // Actualizar campos
         if (dto.getDeporteFavorito() != null) {
             usuario.setDeporteFavorito(dto.getDeporteFavorito());
         }
@@ -111,10 +97,20 @@ public class UsuarioService {
         usuario.setNotificacionesEmail(dto.isNotificacionesEmail());
         usuario.setNotificacionesPush(dto.isNotificacionesPush());
         
-        Usuario actualizado = usuarioRepository.save(usuario);
-        logger.info("Usuario actualizado: {}", id);
+        return mapearADTO(usuarioRepository.save(usuario));
+    }
+    
+    /**
+     * Actualiza el token de notificaciones push de un usuario
+     */
+    public UsuarioResponseDTO actualizarPushToken(Long id, PushTokenUpdateDTO dto) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
         
-        return mapearADTO(actualizado);
+        usuario.setFirebaseToken(dto.getPushToken());
+        usuario.setNotificacionesPush(true);
+        
+        return mapearADTO(usuarioRepository.save(usuario));
     }
     
     /**

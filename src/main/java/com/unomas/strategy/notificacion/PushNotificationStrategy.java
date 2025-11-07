@@ -31,8 +31,11 @@ public class PushNotificationStrategy implements IStrategiaNotificacion {
             return;
         }
         
-        if (usuario.getFirebaseToken() == null || usuario.getFirebaseToken().isEmpty()) {
-            logger.warn("Usuario {} no tiene Firebase token configurado", usuario.getNombreUsuario());
+        // Verificar si tiene Expo Push Token (token que comienza con ExponentPushToken[)
+        // o Firebase token (para apps nativas)
+        String pushToken = usuario.getFirebaseToken();
+        if (pushToken == null || pushToken.isEmpty()) {
+            logger.warn("Usuario {} no tiene push token configurado", usuario.getNombreUsuario());
             return;
         }
         
@@ -44,7 +47,7 @@ public class PushNotificationStrategy implements IStrategiaNotificacion {
         
         try {
             firebaseAdapter.enviarNotificacion(
-                usuario.getFirebaseToken(),
+                pushToken,  // Puede ser Expo token o Firebase token
                 titulo,
                 cuerpo
             );
