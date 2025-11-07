@@ -41,7 +41,11 @@ public class EmailNotificationStrategy implements IStrategiaNotificacion {
     }
     
     private String construirAsunto(Partido partido) {
-        return "Actualización del Partido - " + partido.getTipoDeporte().getNombre();
+        // Incluir ID del partido para evitar que Gmail agrupe en threads
+        return String.format("Partido de %s #%d - %s", 
+            partido.getTipoDeporte().getNombre(),
+            partido.getId(),
+            partido.getEstadoActual());
     }
     
     private String construirMensaje(Usuario destinatario, Partido partido) {

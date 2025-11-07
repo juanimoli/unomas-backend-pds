@@ -146,7 +146,7 @@ create_demo_user() {
         USER1_ID=$existing_user
         curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
             -H "$CONTENT_TYPE" \
-            -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
+            -d '{"pushToken": "fDSfDzUrRjuNi6AfLXkx1q:APA91bE0xN3RF7QddCrd8YgVLiGY09vtlr62pCY7pVwyNQzoIbrZKeXST50WjGpfMF-Igt2g_gIZA7V88_QSQNOXeXAcLWjcSm8iLdsi7sWgCvWuC5A7L_8"}' > /dev/null
         return
     fi
     
@@ -175,7 +175,7 @@ create_demo_user() {
     
     curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
         -H "$CONTENT_TYPE" \
-        -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
+        -d '{"pushToken": "fDSfDzUrRjuNi6AfLXkx1q:APA91bE0xN3RF7QddCrd8YgVLiGY09vtlr62pCY7pVwyNQzoIbrZKeXST50WjGpfMF-Igt2g_gIZA7V88_QSQNOXeXAcLWjcSm8iLdsi7sWgCvWuC5A7L_8"}' > /dev/null
 }
 
 # Function to create secondary user
@@ -689,7 +689,7 @@ setup_demo_user() {
 
     # 2. Configurar token de Firebase
     echo -e "${YELLOW}2. Configurando token de Firebase para notificaciones push...${NC}"
-    PUSH_TOKEN='{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}'
+    PUSH_TOKEN='{"pushToken": "fDSfDzUrRjuNi6AfLXkx1q:APA91bE0xN3RF7QddCrd8YgVLiGY09vtlr62pCY7pVwyNQzoIbrZKeXST50WjGpfMF-Igt2g_gIZA7V88_QSQNOXeXAcLWjcSm8iLdsi7sWgCvWuC5A7L_8"}'
 
     response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X PUT "$BASE_URL/api/usuarios/$USER_ID/push-token" \
         -H "$CONTENT_TYPE" \
@@ -924,7 +924,7 @@ make_request GET "$BASE_URL/api/usuarios/$USER1_ID" "" 200 "Get User 1"
 make_request GET "$BASE_URL/api/usuarios" "" 200 "Get All Users"
 
 # Test 6: Update User 1 Push Token
-PUSH_TOKEN_DATA='{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}'
+PUSH_TOKEN_DATA='{"pushToken": "fDSfDzUrRjuNi6AfLXkx1q:APA91bE0xN3RF7QddCrd8YgVLiGY09vtlr62pCY7pVwyNQzoIbrZKeXST50WjGpfMF-Igt2g_gIZA7V88_QSQNOXeXAcLWjcSm8iLdsi7sWgCvWuC5A7L_8"}'
 make_request PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" "$PUSH_TOKEN_DATA" 200 "Update User 1 Push Token"
 
 # Test 7: Create Match
