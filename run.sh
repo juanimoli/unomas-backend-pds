@@ -93,50 +93,34 @@ extract_id() {
 
 # Function to clean database (restart backend)
 clean_database() {
-    echo -e "${YELLOW}=== Limpiando Base de Datos (reiniciando backend) ===${NC}"
+    echo -e "${YELLOW}=== Reiniciando backend con BD limpia ===${NC}"
     echo ""
     
-    # Find and kill existing backend process
     echo "Deteniendo backend existente..."
     pkill -f "spring-boot:run" 2>/dev/null || true
     pkill -f "unomas-backend" 2>/dev/null || true
     pkill -f "java.*unomas-backend.*jar" 2>/dev/null || true
     sleep 2
     
-    # Start backend in background WITH ENVIRONMENT VARIABLES
-    echo "Iniciando backend limpio con configuración de email..."
+    echo "Iniciando backend..."
     cd /Users/juanimoli/Development/uno-mas-tp-adoo
     
-    # Load .env file if it exists
     if [ -f .env ]; then
-        echo "Cargando variables de entorno desde .env..."
         export $(cat .env | grep -v '^#' | xargs)
-    else
-        echo -e "${YELLOW}⚠ Archivo .env no encontrado. Las notificaciones por email podrían no funcionar.${NC}"
     fi
     
-    # Use JAR instead of spring-boot:run to ensure proper environment
     if [ -f target/unomas-backend-1.0.0.jar ]; then
         nohup java -jar target/unomas-backend-1.0.0.jar > /tmp/unomas-backend.log 2>&1 &
     else
-        echo "JAR no encontrado, compilando..."
         ./mvnw clean package -DskipTests
         nohup java -jar target/unomas-backend-1.0.0.jar > /tmp/unomas-backend.log 2>&1 &
     fi
     
-    # Wait for backend to be ready
     echo -n "Esperando que el backend esté listo"
     for i in {1..40}; do
         if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
             echo ""
-            echo -e "${GREEN}✓ Backend reiniciado y listo${NC}"
-            
-            # Verify email configuration
-            if [ -n "$SPRING_MAIL_USERNAME" ]; then
-                echo -e "${GREEN}✓ Configuración de email detectada (${SPRING_MAIL_USERNAME})${NC}"
-            else
-                echo -e "${YELLOW}⚠ Sin configuración de email - solo notificaciones push${NC}"
-            fi
+            echo -e "${GREEN}✓ Backend listo${NC}"
             echo ""
             sleep 3
             return 0
@@ -146,8 +130,7 @@ clean_database() {
     done
     
     echo ""
-    echo -e "${RED}✗ Timeout esperando el backend. Ver logs en /tmp/unomas-backend.log${NC}"
-    tail -50 /tmp/unomas-backend.log
+    echo -e "${RED}✗ Error iniciando backend${NC}"
     exit 1
 }
 
@@ -156,22 +139,17 @@ create_demo_user() {
     local deporte=$1
     local timestamp=$2
     
-    # Try to find existing user first
     all_users=$(curl -s "$BASE_URL/api/usuarios")
     existing_user=$(echo "$all_users" | grep -B 10 "facundocarrizo99@gmail.com" | grep -oE '"id":\s*[0-9]+' | head -1 | grep -oE '[0-9]+')
     
     if [ -n "$existing_user" ]; then
-        echo -e "${YELLOW}Usuario con email facundocarrizo99@gmail.com ya existe (ID: $existing_user)${NC}"
         USER1_ID=$existing_user
-        
-        # Update push token
         curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
             -H "$CONTENT_TYPE" \
             -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
         return
     fi
     
-    # Create new user
     USER1_DATA='{
         "nombreUsuario": "org_'$timestamp'",
         "email": "facundocarrizo99@gmail.com",
@@ -190,13 +168,11 @@ create_demo_user() {
     
     if [ "$http_status" -eq "201" ] || [ "$http_status" -eq "200" ]; then
         USER1_ID=$(extract_id "$body")
-        echo -e "${GREEN}Usuario creado exitosamente (ID: $USER1_ID)${NC}"
     else
-        echo -e "${RED}Error creando usuario: $body${NC}"
+        echo -e "${RED}Error creando usuario${NC}"
         exit 1
     fi
     
-    # Configurar token Firebase
     curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
         -H "$CONTENT_TYPE" \
         -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
@@ -281,39 +257,28 @@ escenario_finalizado() {
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
-    # Confirmar
     echo -e "${YELLOW}Paso 4: Confirmando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/confirmar" > /dev/null
     echo -e "${GREEN}✓ Partido confirmado${NC}"
     echo -e "  Transición: PARTIDO_ARMADO → ${BLUE}CONFIRMADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
-    # Iniciar
     echo -e "${YELLOW}Paso 5: Iniciando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/iniciar" > /dev/null
     echo -e "${GREEN}✓ Partido iniciado${NC}"
     echo -e "  Transición: CONFIRMADO → ${BLUE}EN_JUEGO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
-    # Finalizar
     echo -e "${YELLOW}Paso 6: Finalizando partido...${NC}"
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/finalizar" > /dev/null
     echo -e "${GREEN}✓ Partido finalizado${NC}"
     echo -e "  Transición: EN_JUEGO → ${BLUE}FINALIZADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
     # Resumen
@@ -323,11 +288,10 @@ escenario_finalizado() {
     echo ""
     echo "Estado final: ${GREEN}FINALIZADO${NC}"
     echo "Transiciones realizadas: 5"
-    echo "Notificaciones enviadas: 4"
     echo ""
-    echo "Verificar:"
-    echo "  📧 Email: facundocarrizo99@gmail.com (4 emails)"
-    echo "  📱 Notificaciones push en dispositivo"
+    echo "Verificar notificaciones en:"
+    echo "  📧 Email: facundocarrizo99@gmail.com"
+    echo "  📱 Dispositivo Android"
     echo ""
 }
 
@@ -386,9 +350,7 @@ escenario_cancelado() {
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
     # Cancelar (por mal clima, falta de jugadores, etc)
@@ -396,9 +358,7 @@ escenario_cancelado() {
     curl -s -X PUT "$BASE_URL/api/partidos/$PARTIDO_ID/cancelar" > /dev/null
     echo -e "${GREEN}✓ Partido cancelado${NC}"
     echo -e "  Transición: PARTIDO_ARMADO → ${BLUE}CANCELADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
     # Resumen
@@ -469,9 +429,7 @@ escenario_armado() {
     curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_ID?usuarioId=$USER2_ID" > /dev/null
     echo -e "${GREEN}✓ Jugador 2 unido - Equipo completo!${NC}"
     echo -e "  Transición: BUSCANDO_JUGADORES → ${BLUE}PARTIDO_ARMADO${NC}"
-    echo -e "  📧 ${YELLOW}Enviando notificaciones...${NC}"
-    sleep 5
-    echo -e "  ✓ Notificaciones enviadas"
+    sleep 3
     echo ""
     
     # Resumen

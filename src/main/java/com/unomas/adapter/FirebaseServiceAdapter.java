@@ -23,21 +23,24 @@ public class FirebaseServiceAdapter implements NotificacionServiceAdapter {
     @Override
     public void enviarNotificacion(String token, String titulo, String mensaje) {
         if (!isDisponible()) {
-            logger.warn("Firebase no está habilitado");
             return;
         }
         
         try {
+            String notificationId = String.valueOf(System.currentTimeMillis());
+            
             Message message = Message.builder()
                 .setToken(token)
                 .setNotification(Notification.builder()
                     .setTitle(titulo)
                     .setBody(mensaje)
                     .build())
+                .putData("notificationId", notificationId)
+                .putData("timestamp", String.valueOf(System.currentTimeMillis()))
+                .putData("type", "partido_update")
                 .build();
             
-            String response = FirebaseMessaging.getInstance().send(message);
-            logger.info("Notificación push enviada. Response: {}", response);
+            FirebaseMessaging.getInstance().send(message);
             
         } catch (Exception e) {
             logger.error("Error al enviar notificación push: {}", e.getMessage());
