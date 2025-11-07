@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Círculo de fondo púrpura -->
+    <path
+        android:fillColor="#667eea"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z"/>
+    
+    <!-- Pelota deportiva (círculo central) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M15,9.5m-2.5,0a2.5,2.5 0,1,1 5,0a2.5,2.5 0,1,1 -5,0"/>
+    
+    <!-- Líneas de la pelota -->
+    <path
+        android:fillColor="#667eea"
+        android:strokeColor="#667eea"
+        android:strokeWidth="0.5"
+        android:pathData="M13.5,9.5h3M15,8v3"/>
+    
+    <!-- Persona 1 (silueta izquierda) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,7.5m-1,0a1,1 0,1,1 2,0a1,1 0,1,1 -2,0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M5.5,10h3c0.28,0 0.5,0.22 0.5,0.5v4c0,0.28 -0.22,0.5 -0.5,0.5h-0.5v3c0,0.28 -0.22,0.5 -0.5,0.5s-0.5,-0.22 -0.5,-0.5v-3h-0.5v3c0,0.28 -0.22,0.5 -0.5,0.5s-0.5,-0.22 -0.5,-0.5v-3h-0.5c-0.28,0 -0.5,-0.22 -0.5,-0.5v-4C5,10.22 5.22,10 5.5,10z"/>
+    
+    <!-- Símbolo +1 (en dorado) -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M18,16h1v-4h-1v4zM20,16h1v-4h-0.5l-0.5,0.5V16z"/>
+</vector>

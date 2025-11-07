@@ -3,7 +3,6 @@ package com.unomas.mobile;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
@@ -12,41 +11,43 @@ import com.google.firebase.messaging.RemoteMessage;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
-    private static final String TAG = "FCMService";
     private static final String CHANNEL_ID = "unomas_notifications";
 
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
-        
-        Log.d(TAG, "From: " + remoteMessage.getFrom());
 
-        // Verificar si el mensaje contiene notificación
         if (remoteMessage.getNotification() != null) {
             String title = remoteMessage.getNotification().getTitle();
             String body = remoteMessage.getNotification().getBody();
             
-            Log.d(TAG, "Notification Title: " + title);
-            Log.d(TAG, "Notification Body: " + body);
+            // Extraer el ID único de notificación de los datos
+            int notificationId;
+            if (remoteMessage.getData().containsKey("notificationId")) {
+                try {
+                    String notifIdStr = remoteMessage.getData().get("notificationId");
+                    long timestampLong = Long.parseLong(notifIdStr);
+                    notificationId = (int) (timestampLong & 0x7FFFFFFF);
+                } catch (Exception e) {
+                    notificationId = (int) (System.currentTimeMillis() & 0x7FFFFFFF);
+                }
+            } else {
+                notificationId = (int) (System.currentTimeMillis() & 0x7FFFFFFF);
+            }
             
-            mostrarNotificacion(title, body);
+            mostrarNotificacion(title, body, notificationId);
         }
     }
 
     @Override
     public void onNewToken(String token) {
         super.onNewToken(token);
-        Log.d(TAG, "Refreshed token: " + token);
-        
-        // Aquí podrías enviar el token al backend si lo necesitas
-        // sendRegistrationToServer(token);
     }
 
-    private void mostrarNotificacion(String title, String message) {
+    private void mostrarNotificacion(String title, String message, int notificationId) {
         NotificationManager notificationManager = 
             (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-        // Crear canal de notificación en Android O+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
@@ -57,14 +58,13 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             notificationManager.createNotificationChannel(channel);
         }
 
-        // Construir y mostrar la notificación
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
-        notificationManager.notify(0, builder.build());
+        notificationManager.notify(notificationId, builder.build());
     }
 }
