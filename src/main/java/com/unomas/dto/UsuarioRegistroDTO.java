@@ -37,7 +37,7 @@ public class UsuarioRegistroDTO {
     private Double longitud;  // Coordenada geográfica
     private Double latitud;   // Coordenada geográfica
     
-    private String firebaseToken;
+    private String pushToken;
     
     @Builder.Default
     private boolean notificacionesEmail = true;

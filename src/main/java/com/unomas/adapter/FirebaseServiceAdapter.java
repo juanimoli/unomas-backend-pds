@@ -23,8 +23,7 @@ public class FirebaseServiceAdapter implements NotificacionServiceAdapter {
     @Override
     public void enviarNotificacion(String token, String titulo, String mensaje) {
         if (!isDisponible()) {
-            logger.warn("Firebase no está habilitado. Simulando envío push");
-            simularEnvio(token, titulo, mensaje);
+            logger.warn("Firebase no está habilitado");
             return;
         }
         
@@ -38,28 +37,15 @@ public class FirebaseServiceAdapter implements NotificacionServiceAdapter {
                 .build();
             
             String response = FirebaseMessaging.getInstance().send(message);
-            logger.info("Notificación push enviada exitosamente. Response: {}", response);
+            logger.info("Notificación push enviada. Response: {}", response);
             
         } catch (Exception e) {
             logger.error("Error al enviar notificación push: {}", e.getMessage());
-            // En caso de error, simular el envío
-            simularEnvio(token, titulo, mensaje);
         }
     }
     
     @Override
     public boolean isDisponible() {
         return firebaseEnabled;
-    }
-    
-    /**
-     * Simula el envío de notificación push cuando Firebase no está configurado
-     */
-    private void simularEnvio(String token, String titulo, String mensaje) {
-        logger.info("=== SIMULACIÓN DE PUSH NOTIFICATION ===");
-        logger.info("Token: {}...", token != null ? token.substring(0, Math.min(20, token.length())) : "null");
-        logger.info("Título: {}", titulo);
-        logger.info("Mensaje: {}", mensaje);
-        logger.info("========================================");
     }
 }

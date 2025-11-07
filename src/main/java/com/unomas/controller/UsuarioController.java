@@ -27,7 +27,8 @@ public class UsuarioController {
     private UsuarioService usuarioService;
     
     @PostMapping("/registro")
-    @Operation(summary = "Registrar nuevo usuario", description = "Crea un nuevo usuario en el sistema")
+    @Operation(summary = "Registrar nuevo usuario", 
+               description = "Crea un nuevo usuario en el sistema. Incluir 'pushToken' (token FCM) en el body si se desea habilitar notificaciones push.")
     public ResponseEntity<UsuarioResponseDTO> registrarUsuario(@Valid @RequestBody UsuarioRegistroDTO dto) {
         UsuarioResponseDTO usuario = usuarioService.registrarUsuario(dto);
         return new ResponseEntity<>(usuario, HttpStatus.CREATED);
@@ -58,7 +59,7 @@ public class UsuarioController {
     
     @PutMapping("/{id}/push-token")
     @Operation(summary = "Actualizar token de notificaciones push", 
-               description = "Actualiza el token de Expo Push Notifications o Firebase para recibir notificaciones")
+               description = "Actualiza el token FCM de Firebase para recibir notificaciones push")
     public ResponseEntity<UsuarioResponseDTO> actualizarPushToken(
             @PathVariable Long id,
             @Valid @RequestBody PushTokenUpdateDTO dto) {

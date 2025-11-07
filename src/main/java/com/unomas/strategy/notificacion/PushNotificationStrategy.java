@@ -27,31 +27,20 @@ public class PushNotificationStrategy implements IStrategiaNotificacion {
     @Override
     public void enviarNotificacion(Usuario usuario, Partido partido) {
         if (!usuario.isNotificacionesPush()) {
-            logger.debug("Usuario {} tiene notificaciones push desactivadas", usuario.getNombreUsuario());
             return;
         }
         
-        // Verificar si tiene Expo Push Token (token que comienza con ExponentPushToken[)
-        // o Firebase token (para apps nativas)
         String pushToken = usuario.getFirebaseToken();
         if (pushToken == null || pushToken.isEmpty()) {
-            logger.warn("Usuario {} no tiene push token configurado", usuario.getNombreUsuario());
+            logger.warn("Usuario {} no tiene token FCM configurado", usuario.getNombreUsuario());
             return;
         }
-        
-        logger.info("Enviando notificación PUSH a {} para partido {}", 
-                   usuario.getNombreUsuario(), partido.getId());
         
         String titulo = "Partido " + partido.getTipoDeporte().getNombre();
         String cuerpo = construirMensajePush(partido);
         
         try {
-            firebaseAdapter.enviarNotificacion(
-                pushToken,  // Puede ser Expo token o Firebase token
-                titulo,
-                cuerpo
-            );
-            logger.info("Push enviado exitosamente a usuario: {}", usuario.getNombreUsuario());
+            firebaseAdapter.enviarNotificacion(pushToken, titulo, cuerpo);
         } catch (Exception e) {
             logger.error("Error al enviar push a {}: {}", usuario.getNombreUsuario(), e.getMessage());
         }

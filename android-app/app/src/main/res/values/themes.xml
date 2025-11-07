@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.UnoMas" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">#2C3E50</item>
+        <item name="colorPrimaryVariant">#1A252F</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#27AE60</item>
+        <item name="colorSecondaryVariant">#1E8449</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+    </style>
+</resources>

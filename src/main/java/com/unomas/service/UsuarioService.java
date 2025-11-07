@@ -48,7 +48,7 @@ public class UsuarioService {
                 .deporteFavorito(dto.getDeporteFavorito())
                 .nivelJuego(dto.getNivelJuego())
                 .ubicacion(ubicacion)
-                .firebaseToken(dto.getFirebaseToken())
+                .firebaseToken(dto.getPushToken())
                 .notificacionesEmail(dto.isNotificacionesEmail())
                 .notificacionesPush(dto.isNotificacionesPush())
                 .build();
@@ -90,8 +90,8 @@ public class UsuarioService {
         if (dto.getLongitud() != null && dto.getLatitud() != null) {
             usuario.setUbicacion(new Ubicacion(dto.getLongitud(), dto.getLatitud()));
         }
-        if (dto.getFirebaseToken() != null) {
-            usuario.setFirebaseToken(dto.getFirebaseToken());
+        if (dto.getPushToken() != null) {
+            usuario.setFirebaseToken(dto.getPushToken());
         }
         
         usuario.setNotificacionesEmail(dto.isNotificacionesEmail());
