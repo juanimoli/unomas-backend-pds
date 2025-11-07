@@ -21,7 +21,7 @@ public class PartidoFactory {
      * Crea un nuevo partido con configuración predeterminada
      */
     public Partido crearPartido(
-            TipoDeporte tipoDeporte,
+            String tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
             Ubicacion ubicacion,
@@ -29,7 +29,7 @@ public class PartidoFactory {
     ) {
         Partido partido = Partido.builder()
                 .tipoDeporte(tipoDeporte)
-                .cantidadJugadoresRequeridos(tipoDeporte.getJugadoresDefault())
+                .cantidadJugadoresRequeridos(TipoDeporte.getJugadoresDefault(tipoDeporte))
                 .duracionMinutos(90) // Duración predeterminada
                 .ubicacion(ubicacion)
                 .direccion(direccion)
@@ -51,15 +51,15 @@ public class PartidoFactory {
      * Crea un partido con configuración personalizada
      */
     public Partido crearPartidoPersonalizado(
-            TipoDeporte tipoDeporte,
+            String tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
             Ubicacion ubicacion,
             String direccion,
             int cantidadJugadores,
             int duracionMinutos,
-            Usuario.NivelJuego nivelMinimo,
-            Usuario.NivelJuego nivelMaximo,
+            String nivelMinimo,
+            String nivelMaximo,
             String descripcion
     ) {
         Partido partido = Partido.builder()
@@ -89,7 +89,7 @@ public class PartidoFactory {
      * Crea un partido rápido (configuración más simple)
      */
     public Partido crearPartidoRapido(
-            TipoDeporte tipoDeporte,
+            String tipoDeporte,
             Usuario organizador,
             LocalDateTime fechaHora,
             Ubicacion ubicacion

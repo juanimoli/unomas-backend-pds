@@ -42,7 +42,7 @@ public interface EmparejamientoStrategy {
     
     /**
      * Obtiene el tipo único de esta estrategia
-     * @return TipoEstrategia enum value
+     * @return String tipo de estrategia (NIVEL_HABILIDAD, CERCANIA, HISTORIAL)
      */
-    TipoEstrategia getTipo();
+    String getTipo();
 }

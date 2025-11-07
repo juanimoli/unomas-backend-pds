@@ -1,7 +1,5 @@
 package com.unomas.dto;
 
-import com.unomas.model.TipoDeporte;
-import com.unomas.model.Usuario;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,10 +26,10 @@ public class UsuarioResponseDTO {
     private String email;
     
     @Schema(description = "Deporte favorito del usuario", example = "FUTBOL")
-    private TipoDeporte deporteFavorito;
+    private String deporteFavorito;
     
-    @Schema(description = "Nivel de habilidad del usuario", example = "INTERMEDIO")
-    private Usuario.NivelJuego nivelJuego;
+    @Schema(description = "Nivel de habilidad del jugador", example = "INTERMEDIO")
+    private String nivelJuego;
     
     @Schema(description = "Longitud de la ubicación del usuario (coordenada GPS)", example = "-58.3816")
     private Double longitud;

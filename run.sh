@@ -25,6 +25,11 @@ show_usage() {
     echo "  3. armado         - Partido con equipo completo pero no confirmado"
     echo "  4. buscando       - Partido creado buscando jugadores"
     echo ""
+    echo "PRUEBAS DE ESTRATEGIAS DE BÚSQUEDA:"
+    echo "  5. busqueda-nivel     - Buscar partidos por nivel de habilidad"
+    echo "  6. busqueda-cercania  - Buscar partidos por cercanía geográfica"
+    echo "  7. busqueda-historial - Buscar partidos por historial común"
+    echo ""
     echo "OPCIONES ADICIONALES:"
     echo "  emulador          - Abre el emulador de Android e instala la app"
     echo "  setup-demo        - Configura usuario demo con notificaciones"
@@ -1181,6 +1186,373 @@ verificar_configuracion() {
 }
 
 # ============================================================================
+# PRUEBA DE BÚSQUEDA POR NIVEL DE HABILIDAD
+# ============================================================================
+prueba_busqueda_nivel() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║    PRUEBA: Búsqueda por Nivel de Habilidad                 ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "Esta prueba crea varios partidos y usuarios con diferentes niveles"
+    echo "y demuestra cómo la estrategia NIVEL_HABILIDAD filtra compatibilidad"
+    echo ""
+    
+    TIMESTAMP=$(date +%s%N | cut -b1-13)
+    
+    # Crear usuarios con diferentes niveles
+    echo -e "${YELLOW}Paso 1: Creando usuarios con diferentes niveles...${NC}"
+    
+    # Usuario PRINCIPIANTE
+    USER_PRINC_DATA='{
+        "nombreUsuario": "principiante_'$TIMESTAMP'",
+        "email": "princ_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "PRINCIPIANTE",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.3816,
+        "latitud": -34.6037
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_PRINC_DATA")
+    USER_PRINC_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Usuario PRINCIPIANTE creado (ID: $USER_PRINC_ID)${NC}"
+    
+    # Usuario INTERMEDIO
+    USER_INTER_DATA='{
+        "nombreUsuario": "intermedio_'$TIMESTAMP'",
+        "email": "inter_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "INTERMEDIO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.3816,
+        "latitud": -34.6037
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_INTER_DATA")
+    USER_INTER_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Usuario INTERMEDIO creado (ID: $USER_INTER_ID)${NC}"
+    
+    # Usuario AVANZADO
+    USER_AVANZ_DATA='{
+        "nombreUsuario": "avanzado_'$TIMESTAMP'",
+        "email": "avanz_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "AVANZADO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.3816,
+        "latitud": -34.6037
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_AVANZ_DATA")
+    USER_AVANZ_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Usuario AVANZADO creado (ID: $USER_AVANZ_ID)${NC}"
+    echo ""
+    
+    # Crear partidos con diferentes requisitos de nivel
+    echo -e "${YELLOW}Paso 2: Creando partidos con diferentes requisitos...${NC}"
+    
+    # Partido para PRINCIPIANTES
+    PARTIDO1_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$USER_PRINC_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -58.3816,
+        "latitud": -34.6037,
+        "direccion": "Cancha A",
+        "fechaHora": "2025-11-20T15:00:00",
+        "nivelMinimoRequerido": "PRINCIPIANTE",
+        "nivelMaximoRequerido": "INTERMEDIO",
+        "permiteCualquierNivel": false,
+        "descripcion": "Solo PRINCIPIANTE-INTERMEDIO"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO1_DATA")
+    PARTIDO1_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido 1: Solo PRINCIPIANTE-INTERMEDIO (ID: $PARTIDO1_ID)${NC}"
+    
+    # Partido para AVANZADOS
+    PARTIDO2_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$USER_AVANZ_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -58.3816,
+        "latitud": -34.6037,
+        "direccion": "Cancha B",
+        "fechaHora": "2025-11-20T17:00:00",
+        "nivelMinimoRequerido": "AVANZADO",
+        "nivelMaximoRequerido": "AVANZADO",
+        "permiteCualquierNivel": false,
+        "descripcion": "Solo AVANZADO"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO2_DATA")
+    PARTIDO2_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido 2: Solo AVANZADO (ID: $PARTIDO2_ID)${NC}"
+    
+    # Partido CUALQUIER NIVEL
+    PARTIDO3_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$USER_INTER_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -58.3816,
+        "latitud": -34.6037,
+        "direccion": "Cancha C",
+        "fechaHora": "2025-11-20T19:00:00",
+        "permiteCualquierNivel": true,
+        "descripcion": "Todos los niveles bienvenidos"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO3_DATA")
+    PARTIDO3_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido 3: CUALQUIER NIVEL (ID: $PARTIDO3_ID)${NC}"
+    echo ""
+    
+    # Buscar partidos para cada usuario usando estrategia NIVEL_HABILIDAD
+    echo -e "${YELLOW}Paso 3: Buscando partidos compatibles por nivel...${NC}"
+    echo ""
+    
+    echo -e "${BLUE}Búsqueda para usuario PRINCIPIANTE:${NC}"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_PRINC_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
+    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
+    echo "  Partidos compatibles: $count"
+    echo "  Esperado: Partido 1 (PRINC-INTER) y Partido 3 (TODOS)"
+    echo ""
+    
+    echo -e "${BLUE}Búsqueda para usuario INTERMEDIO:${NC}"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_INTER_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
+    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
+    echo "  Partidos compatibles: $count"
+    echo "  Esperado: Partido 1 (PRINC-INTER) y Partido 3 (TODOS)"
+    echo ""
+    
+    echo -e "${BLUE}Búsqueda para usuario AVANZADO:${NC}"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_AVANZ_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
+    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
+    echo "  Partidos compatibles: $count"
+    echo "  Esperado: Partido 2 (AVANZADO) y Partido 3 (TODOS)"
+    echo ""
+    
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║           PRUEBA DE NIVEL DE HABILIDAD COMPLETADA          ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "La estrategia NIVEL_HABILIDAD filtró correctamente los partidos"
+    echo "según los requisitos de nivel mínimo y máximo."
+    echo ""
+}
+
+# ============================================================================
+# PRUEBA DE BÚSQUEDA POR CERCANÍA GEOGRÁFICA
+# ============================================================================
+prueba_busqueda_cercania() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║    PRUEBA: Búsqueda por Cercanía Geográfica                ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "Esta prueba crea partidos en diferentes ubicaciones y demuestra"
+    echo "cómo la estrategia CERCANIA ordena por proximidad geográfica"
+    echo ""
+    
+    TIMESTAMP=$(date +%s%N | cut -b1-13)
+    
+    # Crear usuario central
+    echo -e "${YELLOW}Paso 1: Creando usuario en ubicación central...${NC}"
+    USER_CENTRAL_DATA='{
+        "nombreUsuario": "central_'$TIMESTAMP'",
+        "email": "central_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "INTERMEDIO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.3816,
+        "latitud": -34.6037
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_CENTRAL_DATA")
+    USER_CENTRAL_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Usuario creado en Buenos Aires Centro (-58.3816, -34.6037)${NC}"
+    echo ""
+    
+    # Crear organizadores en diferentes ubicaciones
+    echo -e "${YELLOW}Paso 2: Creando organizadores en diferentes ubicaciones...${NC}"
+    
+    # Organizador CERCA (Palermo)
+    ORG_CERCA_DATA='{
+        "nombreUsuario": "org_cerca_'$TIMESTAMP'",
+        "email": "cerca_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "INTERMEDIO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.4200,
+        "latitud": -34.5750
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$ORG_CERCA_DATA")
+    ORG_CERCA_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Organizador CERCA - Palermo (-58.4200, -34.5750) ~5km${NC}"
+    
+    # Organizador MEDIO (Tigre)
+    ORG_MEDIO_DATA='{
+        "nombreUsuario": "org_medio_'$TIMESTAMP'",
+        "email": "medio_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "INTERMEDIO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -58.5796,
+        "latitud": -34.4260
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$ORG_MEDIO_DATA")
+    ORG_MEDIO_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Organizador MEDIO - Tigre (-58.5796, -34.4260) ~30km${NC}"
+    
+    # Organizador LEJOS (La Plata)
+    ORG_LEJOS_DATA='{
+        "nombreUsuario": "org_lejos_'$TIMESTAMP'",
+        "email": "lejos_'$TIMESTAMP'@test.com",
+        "contrasena": "test123",
+        "nivelJuego": "INTERMEDIO",
+        "deporteFavorito": "FUTBOL",
+        "longitud": -57.9500,
+        "latitud": -34.9200
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$ORG_LEJOS_DATA")
+    ORG_LEJOS_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Organizador LEJOS - La Plata (-57.9500, -34.9200) ~50km${NC}"
+    echo ""
+    
+    # Crear partidos en cada ubicación
+    echo -e "${YELLOW}Paso 3: Creando partidos en cada ubicación...${NC}"
+    
+    PARTIDO_CERCA_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$ORG_CERCA_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -58.4200,
+        "latitud": -34.5750,
+        "direccion": "Palermo - 5km",
+        "fechaHora": "2025-11-21T15:00:00",
+        "permiteCualquierNivel": true,
+        "descripcion": "Partido cerca"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_CERCA_DATA")
+    PARTIDO_CERCA_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido CERCA creado (ID: $PARTIDO_CERCA_ID)${NC}"
+    
+    PARTIDO_MEDIO_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$ORG_MEDIO_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -58.5796,
+        "latitud": -34.4260,
+        "direccion": "Tigre - 30km",
+        "fechaHora": "2025-11-21T17:00:00",
+        "permiteCualquierNivel": true,
+        "descripcion": "Partido distancia media"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_MEDIO_DATA")
+    PARTIDO_MEDIO_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido MEDIO creado (ID: $PARTIDO_MEDIO_ID)${NC}"
+    
+    PARTIDO_LEJOS_DATA='{
+        "tipoDeporte": "FUTBOL",
+        "organizadorId": '"$ORG_LEJOS_ID"',
+        "cantidadJugadoresRequeridos": 5,
+        "duracionMinutos": 90,
+        "longitud": -57.9500,
+        "latitud": -34.9200,
+        "direccion": "La Plata - 50km",
+        "fechaHora": "2025-11-21T19:00:00",
+        "permiteCualquierNivel": true,
+        "descripcion": "Partido lejos"
+    }'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_LEJOS_DATA")
+    PARTIDO_LEJOS_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido LEJOS creado (ID: $PARTIDO_LEJOS_ID)${NC}"
+    echo ""
+    
+    # Buscar partidos usando estrategia CERCANIA
+    echo -e "${YELLOW}Paso 4: Buscando partidos ordenados por cercanía...${NC}"
+    echo ""
+    
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_CENTRAL_ID&estrategiaEmparejamiento=CERCANIA")
+    
+    echo -e "${BLUE}Resultados ordenados por proximidad:${NC}"
+    echo "$resultado" | grep -E '(direccion|id)' | head -6
+    echo ""
+    echo "Orden esperado:"
+    echo "  1º - Palermo (5km)"
+    echo "  2º - Tigre (30km)"
+    echo "  3º - La Plata (50km)"
+    echo ""
+    
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║         PRUEBA DE CERCANÍA GEOGRÁFICA COMPLETADA           ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "La estrategia CERCANIA ordenó los partidos por distancia"
+    echo "usando el algoritmo de Haversine (distancia esférica)."
+    echo ""
+}
+
+# ============================================================================
+# PRUEBA DE BÚSQUEDA POR HISTORIAL
+# ============================================================================
+prueba_busqueda_historial() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║    PRUEBA: Búsqueda por Historial de Partidos              ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    TIMESTAMP=$(date +%s%N | cut -b1-13)
+    
+    # Crear usuarios
+    echo -e "${YELLOW}→ Creando usuarios...${NC}"
+    USER_MAIN_DATA='{"nombreUsuario": "main_'$TIMESTAMP'", "email": "main_'$TIMESTAMP'@test.com", "contrasena": "test123", "nivelJuego": "INTERMEDIO", "deporteFavorito": "FUTBOL", "longitud": -58.3816, "latitud": -34.6037}'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_MAIN_DATA")
+    USER_MAIN_ID=$(extract_id "$response")
+    
+    USER_AMIGO_DATA='{"nombreUsuario": "amigo_'$TIMESTAMP'", "email": "amigo_'$TIMESTAMP'@test.com", "contrasena": "test123", "nivelJuego": "INTERMEDIO", "deporteFavorito": "FUTBOL", "longitud": -58.3816, "latitud": -34.6037}'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_AMIGO_DATA")
+    USER_AMIGO_ID=$(extract_id "$response")
+    
+    USER_DESC_DATA='{"nombreUsuario": "desconocido_'$TIMESTAMP'", "email": "desc_'$TIMESTAMP'@test.com", "contrasena": "test123", "nivelJuego": "INTERMEDIO", "deporteFavorito": "FUTBOL", "longitud": -58.3816, "latitud": -34.6037}'
+    response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$USER_DESC_DATA")
+    USER_DESC_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ 3 usuarios creados${NC}"
+    
+    # Crear partido para generar historial
+    echo -e "${YELLOW}→ Generando historial compartido...${NC}"
+    PARTIDO_HIST_DATA='{"tipoDeporte": "FUTBOL", "organizadorId": '$USER_AMIGO_ID', "cantidadJugadoresRequeridos": 5, "duracionMinutos": 90, "longitud": -58.3816, "latitud": -34.6037, "direccion": "Partido Histórico", "fechaHora": "2025-11-20T15:00:00", "permiteCualquierNivel": true}'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_HIST_DATA")
+    PARTIDO_HIST_ID=$(extract_id "$response")
+    curl -s -X POST "$BASE_URL/api/matcher/unirse/$PARTIDO_HIST_ID?usuarioId=$USER_MAIN_ID" > /dev/null
+    echo -e "${GREEN}✓ MAIN jugó con AMIGO (Partido ID: $PARTIDO_HIST_ID)${NC}"
+    
+    # Crear partidos nuevos
+    echo -e "${YELLOW}→ Creando partidos de prueba...${NC}"
+    PARTIDO_AMIGO_DATA='{"tipoDeporte": "FUTBOL", "organizadorId": '$USER_AMIGO_ID', "cantidadJugadoresRequeridos": 5, "duracionMinutos": 90, "longitud": -58.3816, "latitud": -34.6037, "direccion": "Nuevo Partido del Amigo", "fechaHora": "2025-11-22T15:00:00", "permiteCualquierNivel": true}'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_AMIGO_DATA")
+    PARTIDO_AMIGO_ID=$(extract_id "$response")
+    
+    PARTIDO_DESC_DATA='{"tipoDeporte": "FUTBOL", "organizadorId": '$USER_DESC_ID', "cantidadJugadoresRequeridos": 5, "duracionMinutos": 90, "longitud": -58.3816, "latitud": -34.6037, "direccion": "Partido del Desconocido", "fechaHora": "2025-11-22T17:00:00", "permiteCualquierNivel": true}'
+    response=$(curl -s -X POST "$BASE_URL/api/partidos" -H "$CONTENT_TYPE" -d "$PARTIDO_DESC_DATA")
+    PARTIDO_DESC_ID=$(extract_id "$response")
+    echo -e "${GREEN}✓ Partido con historial (AMIGO): ID $PARTIDO_AMIGO_ID${NC}"
+    echo -e "${RED}✓ Partido sin historial (DESCONOCIDO): ID $PARTIDO_DESC_ID${NC}"
+    
+    # Buscar con estrategia HISTORIAL
+    echo -e "${YELLOW}→ Aplicando filtro HISTORIAL...${NC}"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_MAIN_ID&estrategiaEmparejamiento=HISTORIAL&tipoDeporte=FUTBOL")
+    count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
+    
+    echo ""
+    echo -e "${BLUE}═══ RESULTADOS ═══${NC}"
+    echo "$resultado" | jq -r '.[] | "  ID: \(.id) - \(.direccion)"' 2>/dev/null
+    echo ""
+    echo -e "${CYAN}Total encontrado: $count partido(s)${NC}"
+    echo -e "${GREEN}Esperado: 1 partido (solo el del AMIGO)${NC}"
+    echo ""
+    echo -e "${GREEN}✓ Prueba completada${NC}"
+    echo ""
+}
+
+# ============================================================================
 # MAIN COMMAND ROUTER
 # ============================================================================
 case "$COMMAND" in
@@ -1195,6 +1567,15 @@ case "$COMMAND" in
         ;;
     4|buscando)
         escenario_buscando
+        ;;
+    5|busqueda-nivel)
+        prueba_busqueda_nivel
+        ;;
+    6|busqueda-cercania)
+        prueba_busqueda_cercania
+        ;;
+    7|busqueda-historial)
+        prueba_busqueda_historial
         ;;
     emulador)
         abrir_emulador

@@ -60,7 +60,7 @@ public class CercaniaStrategy implements EmparejamientoStrategy {
     }
     
     @Override
-    public TipoEstrategia getTipo() {
+    public String getTipo() {
         return TipoEstrategia.CERCANIA;
     }
     

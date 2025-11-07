@@ -1,7 +1,5 @@
 package com.unomas.dto;
 
-import com.unomas.model.TipoDeporte;
-import com.unomas.model.Usuario;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,14 +33,14 @@ public class UsuarioRegistroDTO {
     private String contrasena;
     
     @Schema(description = "Deporte favorito del usuario", example = "FUTBOL")
-    private TipoDeporte deporteFavorito;
+    private String deporteFavorito;
     
     @NotNull(message = "El nivel de juego es obligatorio")
-    @Schema(description = "Nivel de habilidad del usuario", 
-            example = "INTERMEDIO", 
+    @Schema(description = "Nivel de habilidad del jugador", 
+            example = "INTERMEDIO",
             required = true,
-            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO", "PROFESIONAL"})
-    private Usuario.NivelJuego nivelJuego;
+            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO"})
+    private String nivelJuego;
     
     @Schema(description = "Longitud de la ubicación del usuario (coordenada GPS)", example = "-58.3816")
     private Double longitud;

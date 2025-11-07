@@ -36,11 +36,11 @@ public class PushNotificationStrategy implements IStrategiaNotificacion {
             return;
         }
         
-        String titulo = "Partido " + partido.getTipoDeporte().getNombre();
-        String cuerpo = construirMensajePush(partido);
+        String titulo = "Partido " + com.unomas.model.TipoDeporte.getNombre(partido.getTipoDeporte());
+        String mensaje = construirMensajePush(partido);
         
         try {
-            firebaseAdapter.enviarNotificacion(pushToken, titulo, cuerpo);
+            firebaseAdapter.enviarNotificacion(pushToken, titulo, mensaje);
         } catch (Exception e) {
             logger.error("Error al enviar push a {}: {}", usuario.getNombreUsuario(), e.getMessage());
         }

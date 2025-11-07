@@ -43,13 +43,13 @@ public class EmailNotificationStrategy implements IStrategiaNotificacion {
     private String construirAsunto(Partido partido) {
         // Incluir ID del partido para evitar que Gmail agrupe en threads
         return String.format("Partido de %s #%d - %s", 
-            partido.getTipoDeporte().getNombre(),
+            com.unomas.model.TipoDeporte.getNombre(partido.getTipoDeporte()),
             partido.getId(),
             partido.getEstadoActual());
     }
     
     private String construirMensaje(Usuario destinatario, Partido partido) {
-        String emoji = obtenerEmojiDeporte(partido.getTipoDeporte().name());
+        String emoji = obtenerEmojiDeporte(partido.getTipoDeporte());
         String estadoTexto = obtenerTextoEstado(partido.getEstadoActual());
         
         StringBuilder jugadoresInfo = new StringBuilder();
@@ -117,7 +117,7 @@ public class EmailNotificationStrategy implements IStrategiaNotificacion {
             destinatario.getNombreUsuario(),
             estadoTexto,
             emoji,
-            partido.getTipoDeporte().getNombre(),
+            com.unomas.model.TipoDeporte.getNombre(partido.getTipoDeporte()),
             partido.getFechaHora(),
             partido.getDireccion() != null ? partido.getDireccion() : "Ver en app",
             partido.getEstadoActual(),

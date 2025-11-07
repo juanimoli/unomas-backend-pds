@@ -33,8 +33,8 @@ class UnoMasApplicationTests {
     
     @Test
     void testTipoDeporteValues() {
-        assertEquals(11, TipoDeporte.FUTBOL.getJugadoresDefault());
-        assertEquals(5, TipoDeporte.FUTBOL_5.getJugadoresDefault());
-        assertEquals(5, TipoDeporte.BASQUET.getJugadoresDefault());
+        assertEquals(11, TipoDeporte.getJugadoresDefault(TipoDeporte.FUTBOL));
+        assertEquals(5, TipoDeporte.getJugadoresDefault(TipoDeporte.FUTBOL_5));
+        assertEquals(5, TipoDeporte.getJugadoresDefault(TipoDeporte.BASQUET));
     }
 }

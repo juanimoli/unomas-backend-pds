@@ -1,6 +1,5 @@
 package com.unomas.dto;
 
-import com.unomas.strategy.emparejamiento.TipoEstrategia;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +20,6 @@ public class PartidoBusquedaDTO {
     private String nivelMaximo;
     private String ubicacion;
     private Double radioKm;
-    private TipoEstrategia estrategiaEmparejamiento; // Enum type-safe
+    private String estrategiaEmparejamiento; // NIVEL_HABILIDAD, CERCANIA, HISTORIAL
     private Long usuarioId; // Para aplicar estrategias de emparejamiento
 }

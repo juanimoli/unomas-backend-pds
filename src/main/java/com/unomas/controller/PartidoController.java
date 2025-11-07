@@ -4,7 +4,6 @@ import com.unomas.dto.PartidoBusquedaDTO;
 import com.unomas.dto.PartidoCreateDTO;
 import com.unomas.dto.PartidoResponseDTO;
 import com.unomas.service.PartidoService;
-import com.unomas.strategy.emparejamiento.TipoEstrategia;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,7 +57,7 @@ public class PartidoController {
     public ResponseEntity<List<PartidoResponseDTO>> buscarPartidos(
             @RequestParam(required = false) String tipoDeporte,
             @RequestParam(required = false) String estado,
-            @RequestParam(required = false) TipoEstrategia estrategiaEmparejamiento,
+            @RequestParam(required = false) String estrategiaEmparejamiento,
             @RequestParam(required = false) Long usuarioId) {
         
         PartidoBusquedaDTO busqueda = PartidoBusquedaDTO.builder()

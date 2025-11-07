@@ -52,7 +52,7 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
             return 0.0;
         }
         
-        double score = partido.getTipoDeporte() == usuario.getDeporteFavorito() ? 75.0 : 50.0;
+        double score = partido.getTipoDeporte().equals(usuario.getDeporteFavorito()) ? 75.0 : 50.0;
         
         if (!partido.isPermiteCualquierNivel()) {
             double nivelPromedio = calcularNivelPromedio(partido);
@@ -71,15 +71,17 @@ public class NivelHabilidadStrategy implements EmparejamientoStrategy {
     }
     
     @Override
-    public TipoEstrategia getTipo() {
+    public String getTipo() {
         return TipoEstrategia.NIVEL_HABILIDAD;
     }
     
-    private int getNivelNumerico(Usuario.NivelJuego nivel) {
-        return switch (nivel) {
-            case PRINCIPIANTE -> 1;
-            case INTERMEDIO -> 2;
-            case AVANZADO -> 3;
+    private int getNivelNumerico(String nivel) {
+        if (nivel == null) return 2;
+        return switch (nivel.toUpperCase()) {
+            case "PRINCIPIANTE" -> 1;
+            case "INTERMEDIO" -> 2;
+            case "AVANZADO" -> 3;
+            default -> 2;
         };
     }
     

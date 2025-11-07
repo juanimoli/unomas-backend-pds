@@ -5,7 +5,7 @@ import com.unomas.strategy.emparejamiento.TipoEstrategia;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,9 +24,8 @@ public class EmparejamientoStrategyFactory {
     // Spring inyecta automáticamente TODAS las implementaciones de EmparejamientoStrategy
     private final List<EmparejamientoStrategy> strategies;
     
-    // EnumMap para búsqueda eficiente y type-safe
-    private final EnumMap<TipoEstrategia, EmparejamientoStrategy> strategiesMap = 
-            new EnumMap<>(TipoEstrategia.class);
+    // Map para búsqueda por tipo (String)
+    private final Map<String, EmparejamientoStrategy> strategiesMap = new HashMap<>();
     
     private EmparejamientoStrategy estrategiaPorDefecto;
     
@@ -42,16 +41,16 @@ public class EmparejamientoStrategyFactory {
     
     /**
      * Inicializa el mapa de estrategias después de la inyección de dependencias
-     * Cada estrategia se registra automáticamente con su tipo enum
+     * Cada estrategia se registra automáticamente con su tipo String
      */
     @PostConstruct
     public void init() {
-        // Registrar cada estrategia con su tipo enum
+        // Registrar cada estrategia con su tipo String
         for (EmparejamientoStrategy strategy : strategies) {
             strategiesMap.put(strategy.getTipo(), strategy);
         }
         
-        // Establecer estrategia por defecto (la primera con tipo NIVEL_HABILIDAD)
+        // Establecer estrategia por defecto (NIVEL_HABILIDAD)
         estrategiaPorDefecto = strategiesMap.get(TipoEstrategia.NIVEL_HABILIDAD);
         
         // Si no existe, usar la primera disponible
@@ -61,17 +60,17 @@ public class EmparejamientoStrategyFactory {
     }
     
     /**
-     * Crea una estrategia de emparejamiento basada en el tipo enum
+     * Crea una estrategia de emparejamiento basada en el tipo String
      * 
-     * @param tipo TipoEstrategia enum value
+     * @param tipo String tipo de estrategia (NIVEL_HABILIDAD, CERCANIA, HISTORIAL)
      * @return EmparejamientoStrategy correspondiente
      */
-    public EmparejamientoStrategy crearEstrategia(TipoEstrategia tipo) {
-        if (tipo == null) {
+    public EmparejamientoStrategy crearEstrategia(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
             return estrategiaPorDefecto;
         }
         
-        return strategiesMap.getOrDefault(tipo, estrategiaPorDefecto);
+        return strategiesMap.getOrDefault(tipo.trim().toUpperCase(), estrategiaPorDefecto);
     }
     
     /**
@@ -95,9 +94,9 @@ public class EmparejamientoStrategyFactory {
     /**
      * Obtiene información sobre todas las estrategias disponibles
      * 
-     * @return Map con TipoEstrategia -> EmparejamientoStrategy
+     * @return Map con tipo String -> EmparejamientoStrategy
      */
-    public Map<TipoEstrategia, EmparejamientoStrategy> obtenerEstrategiasDisponibles() {
-        return new EnumMap<>(strategiesMap);
+    public Map<String, EmparejamientoStrategy> obtenerEstrategiasDisponibles() {
+        return new HashMap<>(strategiesMap);
     }
 }

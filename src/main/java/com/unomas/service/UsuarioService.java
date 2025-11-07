@@ -117,8 +117,11 @@ public class UsuarioService {
      * Obtiene entidad Usuario (uso interno)
      */
     public Usuario obtenerUsuarioEntity(Long id) {
-        return usuarioRepository.findById(id)
+        Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
+        // Forzar carga de la relación lazy de partidos
+        usuario.getPartidos().size();
+        return usuario;
     }
     
     /**

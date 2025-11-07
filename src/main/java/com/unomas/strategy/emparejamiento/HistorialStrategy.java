@@ -18,9 +18,25 @@ public class HistorialStrategy implements EmparejamientoStrategy {
     
     @Override
     public boolean esCompatible(Usuario usuario, Partido partido) {
-        // Todos los usuarios son compatibles con esta estrategia
-        // La compatibilidad se mide por el historial
-        return true;
+        // El usuario es compatible solo si ha jugado previamente con alguno de los jugadores inscritos
+        // (incluyendo al organizador, que siempre está "inscrito" al partido)
+        
+        // Verificar si el usuario ha jugado con el organizador
+        if (contarPartidosEnComun(usuario, partido.getOrganizador()) > 0) {
+            return true;
+        }
+        
+        // Verificar si el usuario ha jugado con alguno de los jugadores inscritos
+        if (partido.getJugadores() != null && !partido.getJugadores().isEmpty()) {
+            for (Usuario jugador : partido.getJugadores()) {
+                if (contarPartidosEnComun(usuario, jugador) > 0) {
+                    return true;
+                }
+            }
+        }
+        
+        // Si no ha jugado con ninguno (ni organizador ni jugadores), no es compatible
+        return false;
     }
     
     @Override
@@ -53,7 +69,7 @@ public class HistorialStrategy implements EmparejamientoStrategy {
         }
         
         // Bonus si ha jugado el mismo deporte antes
-        if (usuario.getDeporteFavorito() == partido.getTipoDeporte()) {
+        if (usuario.getDeporteFavorito() != null && usuario.getDeporteFavorito().equals(partido.getTipoDeporte())) {
             score += 10.0;
         }
         
@@ -66,31 +82,52 @@ public class HistorialStrategy implements EmparejamientoStrategy {
     }
     
     @Override
-    public TipoEstrategia getTipo() {
+    public String getTipo() {
         return TipoEstrategia.HISTORIAL;
     }
     
     /**
      * Cuenta partidos en común entre dos usuarios
-     * En una implementación real, esto consultaría la base de datos
+     * Considera tanto si jugaron juntos como jugadores inscritos,
+     * como también si uno fue organizador y el otro jugador
      */
     private int contarPartidosEnComun(Usuario usuario1, Usuario usuario2) {
         if (usuario1 == null || usuario2 == null) {
             return 0;
         }
         
-        // Obtener partidos de ambos usuarios
+        // Obtener partidos de ambos usuarios (donde están inscritos como jugadores)
         List<Partido> partidos1 = usuario1.getPartidos();
         List<Partido> partidos2 = usuario2.getPartidos();
         
-        if (partidos1 == null || partidos2 == null) {
-            return 0;
+        if (partidos1 == null) {
+            partidos1 = new ArrayList<>();
+        }
+        if (partidos2 == null) {
+            partidos2 = new ArrayList<>();
         }
         
-        // Contar partidos en común
+        // Contar partidos donde ambos estuvieron inscritos como jugadores
         int count = 0;
         for (Partido p1 : partidos1) {
             if (partidos2.stream().anyMatch(p2 -> p2.getId() != null && p2.getId().equals(p1.getId()))) {
+                count++;
+            }
+        }
+        
+        // También considerar partidos donde uno fue organizador y el otro jugador
+        // Usuario1 jugó en partidos organizados por usuario2
+        for (Partido p : partidos1) {
+            if (p.getOrganizador() != null && p.getOrganizador().getId() != null 
+                && p.getOrganizador().getId().equals(usuario2.getId())) {
+                count++;
+            }
+        }
+        
+        // Usuario2 jugó en partidos organizados por usuario1
+        for (Partido p : partidos2) {
+            if (p.getOrganizador() != null && p.getOrganizador().getId() != null 
+                && p.getOrganizador().getId().equals(usuario1.getId())) {
                 count++;
             }
         }

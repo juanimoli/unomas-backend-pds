@@ -1,7 +1,5 @@
 package com.unomas.dto;
 
-import com.unomas.model.TipoDeporte;
-import com.unomas.model.Usuario;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,9 +23,9 @@ public class PartidoResponseDTO {
     private Long id;
     
     @Schema(description = "Tipo de deporte del partido", example = "FUTBOL")
-    private TipoDeporte tipoDeporte;
+    private String tipoDeporte;
     
-    @Schema(description = "Cantidad de jugadores requeridos", example = "10")
+    @Schema(description = "Cantidad total de jugadores requeridos para el partido", example = "10")
     private int cantidadJugadoresRequeridos;
     
     @Schema(description = "Duración estimada del partido en minutos", example = "90")
@@ -57,10 +55,10 @@ public class PartidoResponseDTO {
     private List<UsuarioResponseDTO> jugadores;
     
     @Schema(description = "Nivel mínimo de habilidad requerido", example = "INTERMEDIO")
-    private Usuario.NivelJuego nivelMinimoRequerido;
+    private String nivelMinimoRequerido;
     
     @Schema(description = "Nivel máximo de habilidad permitido", example = "AVANZADO")
-    private Usuario.NivelJuego nivelMaximoRequerido;
+    private String nivelMaximoRequerido;
     
     @Schema(description = "Indica si permite jugadores de cualquier nivel", example = "false")
     private boolean permiteCualquierNivel;

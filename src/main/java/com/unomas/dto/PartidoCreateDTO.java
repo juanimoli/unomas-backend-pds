@@ -1,7 +1,5 @@
 package com.unomas.dto;
 
-import com.unomas.model.TipoDeporte;
-import com.unomas.model.Usuario;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
@@ -27,8 +25,8 @@ public class PartidoCreateDTO {
     @Schema(description = "Tipo de deporte del partido", 
             example = "FUTBOL", 
             required = true,
-            allowableValues = {"FUTBOL", "BASQUET", "TENIS", "VOLLEY", "RUGBY", "PADDLE", "HOCKEY", "HANDBALL"})
-    private TipoDeporte tipoDeporte;
+            allowableValues = {"FUTBOL", "BASQUET", "TENIS", "VOLEY", "RUGBY", "PADDLE", "HOCKEY", "HANDBALL"})
+    private String tipoDeporte;
     
     @Min(value = 2, message = "Se requieren al menos 2 jugadores")
     @Schema(description = "Cantidad de jugadores requeridos para completar el partido", 
@@ -75,13 +73,13 @@ public class PartidoCreateDTO {
     
     @Schema(description = "Nivel mínimo de habilidad requerido para unirse al partido", 
             example = "INTERMEDIO",
-            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO", "PROFESIONAL"})
-    private Usuario.NivelJuego nivelMinimoRequerido;
+            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO"})
+    private String nivelMinimoRequerido;
     
     @Schema(description = "Nivel máximo de habilidad permitido para unirse al partido", 
             example = "AVANZADO",
-            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO", "PROFESIONAL"})
-    private Usuario.NivelJuego nivelMaximoRequerido;
+            allowableValues = {"PRINCIPIANTE", "INTERMEDIO", "AVANZADO"})
+    private String nivelMaximoRequerido;
     
     @Schema(description = "Si es true, permite jugadores de cualquier nivel (ignora restricciones de nivel)", 
             example = "false")

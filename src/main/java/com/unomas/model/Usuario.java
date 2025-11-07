@@ -34,12 +34,11 @@ public class Usuario {
     @Column(nullable = false)
     private String contrasena;
 
-    @Enumerated(EnumType.STRING)
-    private TipoDeporte deporteFavorito;
+    @Column(name = "deporte_favorito")
+    private String deporteFavorito; // String: FUTBOL, BASQUET, etc.
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NivelJuego nivelJuego;
+    @Column(nullable = false, name = "nivel_juego")
+    private String nivelJuego; // String: PRINCIPIANTE, INTERMEDIO, AVANZADO
 
     @Embedded
     private Ubicacion ubicacion; // Objeto Ubicacion embebido
@@ -59,10 +58,15 @@ public class Usuario {
     @Builder.Default
     private boolean notificacionesPush = true;
 
-    public enum NivelJuego {
-        PRINCIPIANTE,
-        INTERMEDIO,
-        AVANZADO
+    /**
+     * Constantes para niveles de juego
+     */
+    public static class NivelJuego {
+        public static final String PRINCIPIANTE = "PRINCIPIANTE";
+        public static final String INTERMEDIO = "INTERMEDIO";
+        public static final String AVANZADO = "AVANZADO";
+        
+        private NivelJuego() {}
     }
 
     // Métodos de dominio según diagrama

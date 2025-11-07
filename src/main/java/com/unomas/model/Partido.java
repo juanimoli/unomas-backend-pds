@@ -32,9 +32,8 @@ public class Partido implements IObservable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoDeporte tipoDeporte;
+    @Column(nullable = false, name = "tipo_deporte")
+    private String tipoDeporte; // String: FUTBOL, BASQUET, etc.
 
     @Column(nullable = false)
     private int cantidadJugadoresRequeridos;
@@ -66,11 +65,11 @@ public class Partido implements IObservable {
     @Builder.Default
     private List<Usuario> jugadores = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
-    private Usuario.NivelJuego nivelMinimoRequerido;
+    @Column(name = "nivel_minimo_requerido")
+    private String nivelMinimoRequerido; // String: PRINCIPIANTE, INTERMEDIO, AVANZADO
 
-    @Enumerated(EnumType.STRING)
-    private Usuario.NivelJuego nivelMaximoRequerido;
+    @Column(name = "nivel_maximo_requerido")
+    private String nivelMaximoRequerido; // String: PRINCIPIANTE, INTERMEDIO, AVANZADO
 
     @Builder.Default
     private boolean permiteCualquierNivel = true;

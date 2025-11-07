@@ -1,21 +1,25 @@
 package com.unomas.strategy.emparejamiento;
 
 /**
- * Enum que define los tipos de estrategias de emparejamiento disponibles
- * Proporciona identificadores únicos y type-safety
+ * Constantes para los tipos de estrategias de emparejamiento disponibles
+ * Usando Strings en lugar de Enum para mayor flexibilidad
  */
-public enum TipoEstrategia {
-    NIVEL_HABILIDAD("Nivel de Habilidad"),
-    CERCANIA("Cercanía Geográfica"),
-    HISTORIAL("Historial de Partidos");
+public class TipoEstrategia {
     
-    private final String descripcion;
+    public static final String NIVEL_HABILIDAD = "NIVEL_HABILIDAD";
+    public static final String CERCANIA = "CERCANIA";
+    public static final String HISTORIAL = "HISTORIAL";
     
-    TipoEstrategia(String descripcion) {
-        this.descripcion = descripcion;
+    private TipoEstrategia() {
+        // Clase de utilidad - no instanciable
     }
     
-    public String getDescripcion() {
-        return descripcion;
+    public static String getDescripcion(String tipo) {
+        return switch (tipo) {
+            case NIVEL_HABILIDAD -> "Nivel de Habilidad";
+            case CERCANIA -> "Cercanía Geográfica";
+            case HISTORIAL -> "Historial de Partidos";
+            default -> "Desconocido";
+        };
     }
 }

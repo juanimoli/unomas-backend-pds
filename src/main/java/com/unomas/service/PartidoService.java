@@ -83,7 +83,7 @@ public class PartidoService {
                 dto.getDireccion(),
                 dto.getCantidadJugadoresRequeridos() != null ? 
                     dto.getCantidadJugadoresRequeridos() : 
-                    dto.getTipoDeporte().getJugadoresDefault(),
+                    TipoDeporte.getJugadoresDefault(dto.getTipoDeporte()),
                 dto.getDuracionMinutos() != null ? dto.getDuracionMinutos() : 90,
                 dto.getNivelMinimoRequerido(),
                 dto.getNivelMaximoRequerido(),
@@ -124,9 +124,9 @@ public class PartidoService {
         
         // Filtrar por tipo de deporte si se especifica
         if (busqueda.getTipoDeporte() != null) {
-            TipoDeporte deporte = TipoDeporte.valueOf(busqueda.getTipoDeporte());
+            String deporteBuscado = busqueda.getTipoDeporte();
             partidos = partidos.stream()
-                .filter(p -> p.getTipoDeporte() == deporte)
+                .filter(p -> p.getTipoDeporte().equals(deporteBuscado))
                 .collect(Collectors.toList());
         }
         
@@ -135,6 +135,9 @@ public class PartidoService {
             EmparejamientoStrategy strategy = strategyFactory.crearEstrategia(busqueda.getEstrategiaEmparejamiento());
             
             partidos = partidos.stream()
+                // Excluir partidos donde el usuario ya está inscrito
+                .filter(p -> !p.getJugadores().contains(usuario))
+                // Aplicar estrategia de compatibilidad
                 .filter(p -> strategy.esCompatible(usuario, p))
                 .sorted((p1, p2) -> Double.compare(
                     strategy.calcularCompatibilidad(usuario, p2),
