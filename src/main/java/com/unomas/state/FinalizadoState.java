@@ -26,7 +26,6 @@ public class FinalizadoState implements EstadoPartido {
 
     @Override
     public void finalizar(Partido partido) {
-        System.out.println("El partido ya está finalizado");
     }
 
     @Override

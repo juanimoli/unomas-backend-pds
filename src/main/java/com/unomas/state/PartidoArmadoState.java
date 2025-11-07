@@ -12,14 +12,12 @@ public class PartidoArmadoState implements EstadoPartido {
     @Override
     public void equipoCompleto(Partido partido) {
         // Ya está completo, no hace nada
-        System.out.println("El partido ya está armado");
     }
 
     @Override
     public void confirmar(Partido partido) {
         // Transición a Confirmado
         partido.cambiarEstado(new ConfirmadoState());
-        System.out.println("Partido " + partido.getId() + " - CONFIRMADO por todos los jugadores");
     }
 
     @Override
@@ -35,7 +33,6 @@ public class PartidoArmadoState implements EstadoPartido {
     @Override
     public void cancelar(Partido partido) {
         partido.cambiarEstado(new CanceladoState());
-        System.out.println("Partido " + partido.getId() + " cancelado desde estado PARTIDO_ARMADO");
     }
 
     @Override

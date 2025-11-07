@@ -21,14 +21,12 @@ public class EnJuegoState implements EstadoPartido {
 
     @Override
     public void iniciar(Partido partido) {
-        System.out.println("El partido ya está en juego");
     }
 
     @Override
     public void finalizar(Partido partido) {
         // Transición a Finalizado
         partido.cambiarEstado(new FinalizadoState());
-        System.out.println("Partido " + partido.getId() + " - Ha finalizado. Estado: FINALIZADO");
     }
 
     @Override

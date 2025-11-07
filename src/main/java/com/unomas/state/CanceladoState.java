@@ -31,7 +31,6 @@ public class CanceladoState implements EstadoPartido {
 
     @Override
     public void cancelar(Partido partido) {
-        System.out.println("El partido ya está cancelado");
     }
 
     @Override

@@ -13,7 +13,6 @@ public class BuscandoJugadoresState implements EstadoPartido {
     public void equipoCompleto(Partido partido) {
         // Transición a Partido Armado
         partido.cambiarEstado(new PartidoArmadoState());
-        System.out.println("Partido " + partido.getId() + " - Equipo completo. Transición a PARTIDO_ARMADO");
     }
 
     @Override
@@ -34,7 +33,6 @@ public class BuscandoJugadoresState implements EstadoPartido {
     @Override
     public void cancelar(Partido partido) {
         partido.cambiarEstado(new CanceladoState());
-        System.out.println("Partido " + partido.getId() + " cancelado desde estado BUSCANDO_JUGADORES");
     }
 
     @Override
