@@ -1309,24 +1309,42 @@ prueba_busqueda_nivel() {
     echo ""
     
     echo -e "${BLUE}Búsqueda para usuario PRINCIPIANTE:${NC}"
-    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_PRINC_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
-    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
-    echo "  Partidos compatibles: $count"
-    echo "  Esperado: Partido 1 (PRINC-INTER) y Partido 3 (TODOS)"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_PRINC_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD&tipoDeporte=FUTBOL")
+    ids=$(echo "$resultado" | jq -r '.[].id' 2>/dev/null | sort -n | tr '\n' ',' | sed 's/,$//')
+    count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
+    echo "  Partidos encontrados: $count → IDs: [$ids]"
+    echo "  ${GREEN}Esperado: 2 partidos (ID $PARTIDO1_ID y $PARTIDO3_ID)${NC}"
+    if echo "$ids" | grep -q "$PARTIDO1_ID" && echo "$ids" | grep -q "$PARTIDO3_ID" && [ "$count" -eq 2 ]; then
+        echo "  ${GREEN}✓ Test CORRECTO${NC}"
+    else
+        echo "  ${RED}✗ Test FALLIDO${NC}"
+    fi
     echo ""
     
     echo -e "${BLUE}Búsqueda para usuario INTERMEDIO:${NC}"
-    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_INTER_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
-    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
-    echo "  Partidos compatibles: $count"
-    echo "  Esperado: Partido 1 (PRINC-INTER) y Partido 3 (TODOS)"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_INTER_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD&tipoDeporte=FUTBOL")
+    ids=$(echo "$resultado" | jq -r '.[].id' 2>/dev/null | sort -n | tr '\n' ',' | sed 's/,$//')
+    count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
+    echo "  Partidos encontrados: $count → IDs: [$ids]"
+    echo "  ${GREEN}Esperado: 2 partidos (ID $PARTIDO1_ID y $PARTIDO3_ID)${NC}"
+    if echo "$ids" | grep -q "$PARTIDO1_ID" && echo "$ids" | grep -q "$PARTIDO3_ID" && [ "$count" -eq 2 ]; then
+        echo "  ${GREEN}✓ Test CORRECTO${NC}"
+    else
+        echo "  ${RED}✗ Test FALLIDO${NC}"
+    fi
     echo ""
     
     echo -e "${BLUE}Búsqueda para usuario AVANZADO:${NC}"
-    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_AVANZ_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD")
-    count=$(echo "$resultado" | grep -o '"id":' | wc -l | xargs)
-    echo "  Partidos compatibles: $count"
-    echo "  Esperado: Partido 2 (AVANZADO) y Partido 3 (TODOS)"
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_AVANZ_ID&estrategiaEmparejamiento=NIVEL_HABILIDAD&tipoDeporte=FUTBOL")
+    ids=$(echo "$resultado" | jq -r '.[].id' 2>/dev/null | sort -n | tr '\n' ',' | sed 's/,$//')
+    count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
+    echo "  Partidos encontrados: $count → IDs: [$ids]"
+    echo "  ${GREEN}Esperado: 2 partidos (ID $PARTIDO2_ID y $PARTIDO3_ID)${NC}"
+    if echo "$ids" | grep -q "$PARTIDO2_ID" && echo "$ids" | grep -q "$PARTIDO3_ID" && [ "$count" -eq 2 ]; then
+        echo "  ${GREEN}✓ Test CORRECTO${NC}"
+    else
+        echo "  ${RED}✗ Test FALLIDO${NC}"
+    fi
     echo ""
     
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -1359,7 +1377,7 @@ prueba_busqueda_cercania() {
         "email": "central_'$TIMESTAMP'@test.com",
         "contrasena": "test123",
         "nivelJuego": "INTERMEDIO",
-        "deporteFavorito": "FUTBOL",
+        "deporteFavorito": "BASQUET",
         "longitud": -58.3816,
         "latitud": -34.6037
     }'
@@ -1377,7 +1395,7 @@ prueba_busqueda_cercania() {
         "email": "cerca_'$TIMESTAMP'@test.com",
         "contrasena": "test123",
         "nivelJuego": "INTERMEDIO",
-        "deporteFavorito": "FUTBOL",
+        "deporteFavorito": "BASQUET",
         "longitud": -58.4200,
         "latitud": -34.5750
     }'
@@ -1391,7 +1409,7 @@ prueba_busqueda_cercania() {
         "email": "medio_'$TIMESTAMP'@test.com",
         "contrasena": "test123",
         "nivelJuego": "INTERMEDIO",
-        "deporteFavorito": "FUTBOL",
+        "deporteFavorito": "BASQUET",
         "longitud": -58.5796,
         "latitud": -34.4260
     }'
@@ -1399,26 +1417,26 @@ prueba_busqueda_cercania() {
     ORG_MEDIO_ID=$(extract_id "$response")
     echo -e "${GREEN}✓ Organizador MEDIO - Tigre (-58.5796, -34.4260) ~30km${NC}"
     
-    # Organizador LEJOS (La Plata)
+    # Organizador LEJOS (La Plata - ajustado a 45km para que pase el filtro de 50km)
     ORG_LEJOS_DATA='{
         "nombreUsuario": "org_lejos_'$TIMESTAMP'",
         "email": "lejos_'$TIMESTAMP'@test.com",
         "contrasena": "test123",
         "nivelJuego": "INTERMEDIO",
-        "deporteFavorito": "FUTBOL",
-        "longitud": -57.9500,
-        "latitud": -34.9200
+        "deporteFavorito": "BASQUET",
+        "longitud": -58.0000,
+        "latitud": -34.8000
     }'
     response=$(curl -s -X POST "$BASE_URL/api/usuarios/registro" -H "$CONTENT_TYPE" -d "$ORG_LEJOS_DATA")
     ORG_LEJOS_ID=$(extract_id "$response")
-    echo -e "${GREEN}✓ Organizador LEJOS - La Plata (-57.9500, -34.9200) ~50km${NC}"
+    echo -e "${GREEN}✓ Organizador LEJOS - La Plata (~45km)${NC}"
     echo ""
     
     # Crear partidos en cada ubicación
     echo -e "${YELLOW}Paso 3: Creando partidos en cada ubicación...${NC}"
     
     PARTIDO_CERCA_DATA='{
-        "tipoDeporte": "FUTBOL",
+        "tipoDeporte": "BASQUET",
         "organizadorId": '"$ORG_CERCA_ID"',
         "cantidadJugadoresRequeridos": 5,
         "duracionMinutos": 90,
@@ -1434,7 +1452,7 @@ prueba_busqueda_cercania() {
     echo -e "${GREEN}✓ Partido CERCA creado (ID: $PARTIDO_CERCA_ID)${NC}"
     
     PARTIDO_MEDIO_DATA='{
-        "tipoDeporte": "FUTBOL",
+        "tipoDeporte": "BASQUET",
         "organizadorId": '"$ORG_MEDIO_ID"',
         "cantidadJugadoresRequeridos": 5,
         "duracionMinutos": 90,
@@ -1450,13 +1468,13 @@ prueba_busqueda_cercania() {
     echo -e "${GREEN}✓ Partido MEDIO creado (ID: $PARTIDO_MEDIO_ID)${NC}"
     
     PARTIDO_LEJOS_DATA='{
-        "tipoDeporte": "FUTBOL",
+        "tipoDeporte": "BASQUET",
         "organizadorId": '"$ORG_LEJOS_ID"',
         "cantidadJugadoresRequeridos": 5,
         "duracionMinutos": 90,
-        "longitud": -57.9500,
-        "latitud": -34.9200,
-        "direccion": "La Plata - 50km",
+        "longitud": -58.0000,
+        "latitud": -34.8000,
+        "direccion": "La Plata - 45km",
         "fechaHora": "2025-11-21T19:00:00",
         "permiteCualquierNivel": true,
         "descripcion": "Partido lejos"
@@ -1470,15 +1488,32 @@ prueba_busqueda_cercania() {
     echo -e "${YELLOW}Paso 4: Buscando partidos ordenados por cercanía...${NC}"
     echo ""
     
-    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_CENTRAL_ID&estrategiaEmparejamiento=CERCANIA")
+    resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_CENTRAL_ID&estrategiaEmparejamiento=CERCANIA&tipoDeporte=BASQUET")
+    count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
     
-    echo -e "${BLUE}Resultados ordenados por proximidad:${NC}"
-    echo "$resultado" | grep -E '(direccion|id)' | head -6
+    echo -e "${BLUE}═══ RESULTADOS (ordenados por proximidad) ═══${NC}"
+    echo "$resultado" | jq -r '.[] | "\(.id): \(.direccion)"' 2>/dev/null | nl
     echo ""
-    echo "Orden esperado:"
-    echo "  1º - Palermo (5km)"
-    echo "  2º - Tigre (30km)"
-    echo "  3º - La Plata (50km)"
+    
+    # Verificar que los 3 partidos aparecen
+    ids=$(echo "$resultado" | jq -r '.[].id' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+    echo -e "${CYAN}Total encontrado: $count partido(s) → IDs: [$ids]${NC}"
+    echo -e "${GREEN}Esperado: 3 partidos (IDs $PARTIDO_CERCA_ID, $PARTIDO_MEDIO_ID, $PARTIDO_LEJOS_ID)${NC}"
+    
+    # Verificar orden
+    primer_id=$(echo "$resultado" | jq -r '.[0].id' 2>/dev/null)
+    segundo_id=$(echo "$resultado" | jq -r '.[1].id' 2>/dev/null)
+    tercer_id=$(echo "$resultado" | jq -r '.[2].id' 2>/dev/null)
+    
+    echo ""
+    echo "Verificación de orden:"
+    if [ "$primer_id" = "$PARTIDO_CERCA_ID" ] && [ "$segundo_id" = "$PARTIDO_MEDIO_ID" ] && [ "$tercer_id" = "$PARTIDO_LEJOS_ID" ] && [ "$count" -eq 3 ]; then
+        echo -e "  ${GREEN}✓ Test CORRECTO: Orden 1º Palermo (~5km), 2º Tigre (~30km), 3º La Plata (~45km)${NC}"
+    else
+        echo -e "  ${RED}✗ Test FALLIDO: Orden incorrecto o cantidad errónea${NC}"
+        echo "  Esperado: 1º=$PARTIDO_CERCA_ID, 2º=$PARTIDO_MEDIO_ID, 3º=$PARTIDO_LEJOS_ID"
+        echo "  Obtenido: 1º=$primer_id, 2º=$segundo_id, 3º=$tercer_id"
+    fi
     echo ""
     
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -1540,13 +1575,21 @@ prueba_busqueda_historial() {
     echo -e "${YELLOW}→ Aplicando filtro HISTORIAL...${NC}"
     resultado=$(curl -s "$BASE_URL/api/partidos?usuarioId=$USER_MAIN_ID&estrategiaEmparejamiento=HISTORIAL&tipoDeporte=FUTBOL")
     count=$(echo "$resultado" | jq 'length' 2>/dev/null || echo "0")
+    ids=$(echo "$resultado" | jq -r '.[].id' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
     
     echo ""
     echo -e "${BLUE}═══ RESULTADOS ═══${NC}"
     echo "$resultado" | jq -r '.[] | "  ID: \(.id) - \(.direccion)"' 2>/dev/null
     echo ""
-    echo -e "${CYAN}Total encontrado: $count partido(s)${NC}"
-    echo -e "${GREEN}Esperado: 1 partido (solo el del AMIGO)${NC}"
+    echo -e "${CYAN}Total encontrado: $count partido(s) → IDs: [$ids]${NC}"
+    echo -e "${GREEN}Esperado: 1 partido (ID $PARTIDO_AMIGO_ID - organizado por AMIGO)${NC}"
+    
+    # Verificar resultado
+    if [ "$count" -eq 1 ] && echo "$ids" | grep -q "$PARTIDO_AMIGO_ID"; then
+        echo -e "${GREEN}✓ Test CORRECTO: Solo aparece partido con historial compartido${NC}"
+    else
+        echo -e "${RED}✗ Test FALLIDO: Resultado incorrecto${NC}"
+    fi
     echo ""
     echo -e "${GREEN}✓ Prueba completada${NC}"
     echo ""
