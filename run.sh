@@ -26,6 +26,7 @@ show_usage() {
     echo "  4. buscando       - Partido creado buscando jugadores"
     echo ""
     echo "OPCIONES ADICIONALES:"
+    echo "  emulador          - Abre el emulador de Android e instala la app"
     echo "  setup-demo        - Configura usuario demo con notificaciones"
     echo "  test              - Ejecuta suite completa de tests (27 tests)"
     echo ""
@@ -160,7 +161,7 @@ create_demo_user() {
     # Configurar token Firebase
     curl -s -X PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" \
         -H "$CONTENT_TYPE" \
-        -d '{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}' > /dev/null
+        -d '{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}' > /dev/null
 }
 
 # Function to create secondary user
@@ -512,6 +513,127 @@ escenario_buscando() {
 }
 
 # ============================================================================
+# ABRIR EMULADOR DE ANDROID
+# ============================================================================
+abrir_emulador() {
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║          INICIANDO EMULADOR DE ANDROID Y APP              ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Detect ANDROID_HOME if not set
+    if [ -z "$ANDROID_HOME" ]; then
+        if [ -d "$HOME/Library/Android/sdk" ]; then
+            export ANDROID_HOME="$HOME/Library/Android/sdk"
+            export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools"
+        else
+            echo -e "${RED}✗ ANDROID_HOME no configurado${NC}"
+            echo "Configura la variable de entorno ANDROID_HOME"
+            exit 1
+        fi
+    fi
+    
+    # Check if ADB is available
+    if ! command -v adb &> /dev/null; then
+        echo -e "${RED}✗ ADB no encontrado. Instala Android SDK.${NC}"
+        echo ""
+        echo "Opciones:"
+        echo "  1. Instalar Android Studio: https://developer.android.com/studio"
+        echo "  2. Instalar SDK tools: brew install --cask android-platform-tools"
+        exit 1
+    fi
+    
+    # List available emulators
+    echo -e "${YELLOW}Emuladores disponibles:${NC}"
+    emulator_list=$($ANDROID_HOME/emulator/emulator -list-avds 2>/dev/null)
+    
+    if [ -z "$emulator_list" ]; then
+        echo -e "${RED}✗ No hay emuladores configurados${NC}"
+        echo ""
+        echo "Crea un emulador desde Android Studio:"
+        echo "  Tools → Device Manager → Create Virtual Device"
+        exit 1
+    fi
+    
+    echo "$emulator_list"
+    echo ""
+    
+    # Use first emulator or ask user
+    EMULATOR_NAME=$(echo "$emulator_list" | head -1)
+    echo -e "${YELLOW}Usando emulador: $EMULATOR_NAME${NC}"
+    echo ""
+    
+    # Check if emulator is already running
+    if adb devices | grep -q "emulator"; then
+        echo -e "${GREEN}✓ Emulador ya está corriendo${NC}"
+    else
+        echo "Iniciando emulador en background..."
+        nohup $ANDROID_HOME/emulator/emulator -avd "$EMULATOR_NAME" -no-snapshot-load > /tmp/emulator.log 2>&1 &
+        EMULATOR_PID=$!
+        
+        # Wait for emulator to boot
+        echo -n "Esperando que el emulador arranque"
+        for i in {1..60}; do
+            if adb shell getprop sys.boot_completed 2>/dev/null | grep -q "1"; then
+                echo ""
+                echo -e "${GREEN}✓ Emulador listo${NC}"
+                break
+            fi
+            echo -n "."
+            sleep 2
+        done
+        echo ""
+    fi
+    
+    # Build and install app
+    echo ""
+    echo -e "${YELLOW}Compilando e instalando app...${NC}"
+    cd android-app
+    
+    ./gradlew assembleDebug
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ App compilada${NC}"
+        
+        # Install APK
+        adb install -r app/build/outputs/apk/debug/app-debug.apk
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ App instalada en el emulador${NC}"
+            echo ""
+            
+            # Launch app
+            echo -e "${YELLOW}Abriendo la app...${NC}"
+            # Get package name from AndroidManifest
+            PACKAGE=$(aapt dump badging app/build/outputs/apk/debug/app-debug.apk 2>/dev/null | grep package | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
+            ACTIVITY=$(aapt dump badging app/build/outputs/apk/debug/app-debug.apk 2>/dev/null | grep launchable-activity | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
+            
+            if [ -n "$PACKAGE" ] && [ -n "$ACTIVITY" ]; then
+                adb shell am start -n "$PACKAGE/$ACTIVITY"
+                echo -e "${GREEN}✓ App abierta${NC}"
+            fi
+            
+            echo ""
+            echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${GREEN}║              EMULADOR Y APP LISTOS                        ║${NC}"
+            echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+            echo ""
+            echo "La app 'Uno Mas' está corriendo en el emulador."
+            echo ""
+            echo "Para ver logs: adb logcat | grep UnoMas"
+        else
+            echo -e "${RED}✗ Error instalando la app${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ Error compilando la app${NC}"
+        exit 1
+    fi
+    
+    cd ..
+}
+
+# ============================================================================
 # SETUP DEMO USER
 # ============================================================================
 setup_demo_user() {
@@ -567,7 +689,7 @@ setup_demo_user() {
 
     # 2. Configurar token de Firebase
     echo -e "${YELLOW}2. Configurando token de Firebase para notificaciones push...${NC}"
-    PUSH_TOKEN='{"pushToken": "efQbd6s2QQ6dfGt8ymNKgU:APA91bHWS-4r2-lOx0ftL3sTjVQbuOrhNqw-7mbVzweFNtxtiuKPbklEf1lY9oQdorsLyC96ZAA0vXH2LmmzT99ZyqOGkjRavR45pp6x__b9XYnxd-5NgZ0"}'
+    PUSH_TOKEN='{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}'
 
     response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X PUT "$BASE_URL/api/usuarios/$USER_ID/push-token" \
         -H "$CONTENT_TYPE" \
@@ -802,7 +924,7 @@ make_request GET "$BASE_URL/api/usuarios/$USER1_ID" "" 200 "Get User 1"
 make_request GET "$BASE_URL/api/usuarios" "" 200 "Get All Users"
 
 # Test 6: Update User 1 Push Token
-PUSH_TOKEN_DATA='{"pushToken": "fake_fcm_token_123"}'
+PUSH_TOKEN_DATA='{"pushToken": "dSkMThDYS5Oy7OLo61SbK8:APA91bHXV-Vzm2imOblB-KFlGUbLLzQSi1zJaNjF0EDIOeztJdVxtQ1BG6g2ovFN5aE2ECDAoSQ4N9TqTVf136YFr9h7SNM8SvNewbJYJp-6MPIwgrX9dBA"}'
 make_request PUT "$BASE_URL/api/usuarios/$USER1_ID/push-token" "$PUSH_TOKEN_DATA" 200 "Update User 1 Push Token"
 
 # Test 7: Create Match
@@ -970,6 +1092,9 @@ case "$COMMAND" in
         ;;
     4|buscando)
         escenario_buscando
+        ;;
+    emulador)
+        abrir_emulador
         ;;
     setup-demo)
         setup_demo_user

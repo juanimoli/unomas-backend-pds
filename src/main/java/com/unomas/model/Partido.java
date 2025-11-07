@@ -163,9 +163,7 @@ public class Partido implements IObservable {
         // Si el partido estaba en PARTIDO_ARMADO y ahora no está completo,
         // volver a BUSCANDO_JUGADORES
         if (estabaCompleto && !estaCompleto() && "PARTIDO_ARMADO".equals(getEstadoActual())) {
-            this.estado = new BuscandoJugadoresState();
-            setEstadoActual("BUSCANDO_JUGADORES");
-            notificarObservadores();
+            cambiarEstado(new BuscandoJugadoresState());
         }
     }
 

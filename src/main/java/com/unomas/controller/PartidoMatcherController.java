@@ -1,7 +1,14 @@
 package com.unomas.controller;
 
+import com.unomas.dto.PartidoResponseDTO;
+import com.unomas.model.Partido;
 import com.unomas.service.MatcherService;
+import com.unomas.service.PartidoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +32,9 @@ public class PartidoMatcherController {
 
     @Autowired
     private MatcherService matcherService;
+    
+    @Autowired
+    private PartidoService partidoService;
 
     /**
      * Une a un usuario a un partido.
@@ -37,27 +47,23 @@ public class PartidoMatcherController {
     @PostMapping("/unirse/{partidoId}")
     @Operation(summary = "Unirse a un partido", 
                description = "Permite a un usuario unirse a un partido específico")
-    public ResponseEntity<String> unirseAPartido(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario unido exitosamente al partido",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartidoResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "No se puede unir al partido (estado incorrecto, usuario ya inscrito, etc.)",
+            content = @Content),
+        @ApiResponse(responseCode = "404", description = "Partido o usuario no encontrado",
+            content = @Content)
+    })
+    public ResponseEntity<PartidoResponseDTO> unirseAPartido(
             @PathVariable int partidoId,
             @RequestParam int usuarioId) {
         
-        try {
-            logger.info("Request: Usuario {} intentando unirse a partido {}", usuarioId, partidoId);
-            matcherService.unirseAPartido(usuarioId, partidoId);
-            
-            String mensaje = String.format("Usuario %d unido exitosamente al partido %d", 
-                                          usuarioId, partidoId);
-            logger.info("Success: {}", mensaje);
-            return ResponseEntity.ok(mensaje);
-            
-        } catch (IllegalStateException e) {
-            logger.warn("Error de estado al unirse: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-            
-        } catch (Exception e) {
-            logger.error("Error al unir usuario a partido: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+        logger.info("Request: Usuario {} intentando unirse a partido {}", usuarioId, partidoId);
+        Partido partido = matcherService.unirseAPartido(usuarioId, partidoId);
+        PartidoResponseDTO response = partidoService.mapearADTO(partido);
+        logger.info("Success: Usuario {} unido exitosamente al partido {}", usuarioId, partidoId);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -71,27 +77,23 @@ public class PartidoMatcherController {
     @PostMapping("/confirmar/{partidoId}")
     @Operation(summary = "Confirmar participación en un partido", 
                description = "Confirma la participación de un usuario en un partido")
-    public ResponseEntity<String> confirmarPartido(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario confirmado exitosamente",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartidoResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "No se puede confirmar (estado incorrecto)",
+            content = @Content),
+        @ApiResponse(responseCode = "404", description = "Partido o usuario no encontrado",
+            content = @Content)
+    })
+    public ResponseEntity<PartidoResponseDTO> confirmarPartido(
             @PathVariable int partidoId,
             @RequestParam int usuarioId) {
         
-        try {
-            logger.info("Request: Usuario {} confirmando partido {}", usuarioId, partidoId);
-            matcherService.confirmarPartido(usuarioId, partidoId);
-            
-            String mensaje = String.format("Usuario %d confirmado para el partido %d", 
-                                          usuarioId, partidoId);
-            logger.info("Success: {}", mensaje);
-            return ResponseEntity.ok(mensaje);
-            
-        } catch (IllegalStateException e) {
-            logger.warn("Error de estado al confirmar: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-            
-        } catch (Exception e) {
-            logger.error("Error al confirmar usuario en partido: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+        logger.info("Request: Usuario {} confirmando partido {}", usuarioId, partidoId);
+        Partido partido = matcherService.confirmarPartido(usuarioId, partidoId);
+        PartidoResponseDTO response = partidoService.mapearADTO(partido);
+        logger.info("Success: Usuario {} confirmado para el partido {}", usuarioId, partidoId);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -105,26 +107,22 @@ public class PartidoMatcherController {
     @DeleteMapping("/bajarse/{partidoId}")
     @Operation(summary = "Bajarse de un partido", 
                description = "Permite a un usuario bajarse de un partido al que estaba unido")
-    public ResponseEntity<String> bajarseDePartido(
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Usuario removido exitosamente del partido",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartidoResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "No se puede bajar del partido (estado incorrecto)",
+            content = @Content),
+        @ApiResponse(responseCode = "404", description = "Partido o usuario no encontrado",
+            content = @Content)
+    })
+    public ResponseEntity<PartidoResponseDTO> bajarseDePartido(
             @PathVariable int partidoId,
             @RequestParam int usuarioId) {
         
-        try {
-            logger.info("Request: Usuario {} bajándose del partido {}", usuarioId, partidoId);
-            matcherService.bajarseDePartido(usuarioId, partidoId);
-            
-            String mensaje = String.format("Usuario %d removido exitosamente del partido %d", 
-                                          usuarioId, partidoId);
-            logger.info("Success: {}", mensaje);
-            return ResponseEntity.ok(mensaje);
-            
-        } catch (IllegalStateException e) {
-            logger.warn("Error de estado al bajarse: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
-            
-        } catch (Exception e) {
-            logger.error("Error al bajar usuario del partido: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
-        }
+        logger.info("Request: Usuario {} bajándose del partido {}", usuarioId, partidoId);
+        Partido partido = matcherService.bajarseDePartido(usuarioId, partidoId);
+        PartidoResponseDTO response = partidoService.mapearADTO(partido);
+        logger.info("Success: Usuario {} removido exitosamente del partido {}", usuarioId, partidoId);
+        return ResponseEntity.ok(response);
     }
 }

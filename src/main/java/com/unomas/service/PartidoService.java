@@ -110,19 +110,19 @@ public class PartidoService {
      * Utiliza Strategy Pattern para filtrar según diferentes criterios
      */
     public List<PartidoResponseDTO> buscarPartidos(PartidoBusquedaDTO busqueda) {
-        List<Partido> partidos = partidoRepository.findAll();
+        List<Partido> partidos;
         
+        // Optimización: buscar por estado directamente en DB en lugar de cargar todos
         if (busqueda.getEstado() != null) {
-            partidos = partidos.stream()
-                .filter(p -> p.getEstadoActual().equals(busqueda.getEstado()))
-                .collect(Collectors.toList());
+            partidos = partidoRepository.findByEstadoActual(busqueda.getEstado());
         } else {
-            partidos = partidos.stream()
-                .filter(p -> p.getEstadoActual().equals("NECESITAMOS_JUGADORES") || 
-                           p.getEstadoActual().equals("PARTIDO_ARMADO"))
-                .collect(Collectors.toList());
+            // Por defecto buscar solo partidos disponibles
+            partidos = partidoRepository.findByEstadoActualIn(
+                List.of("BUSCANDO_JUGADORES", "PARTIDO_ARMADO")
+            );
         }
         
+        // Filtrar por tipo de deporte si se especifica
         if (busqueda.getTipoDeporte() != null) {
             TipoDeporte deporte = TipoDeporte.valueOf(busqueda.getTipoDeporte());
             partidos = partidos.stream()
@@ -165,7 +165,7 @@ public class PartidoService {
         Partido partido = obtenerPartidoEntity(partidoId);
         Usuario usuario = usuarioService.obtenerUsuarioEntity(usuarioId);
         
-        if (!partido.getEstadoActual().equals("NECESITAMOS_JUGADORES")) {
+        if (!partido.getEstadoActual().equals("BUSCANDO_JUGADORES")) {
             throw new IllegalStateException("El partido no está aceptando jugadores");
         }
         
@@ -290,7 +290,7 @@ public class PartidoService {
     /**
      * Mapea Partido a DTO
      */
-    private PartidoResponseDTO mapearADTO(Partido partido) {
+    public PartidoResponseDTO mapearADTO(Partido partido) {
         PartidoResponseDTO.PartidoResponseDTOBuilder builder = PartidoResponseDTO.builder()
             .id(partido.getId())
             .tipoDeporte(partido.getTipoDeporte())

@@ -18,6 +18,8 @@ public interface PartidoRepository extends JpaRepository<Partido, Long> {
     
     List<Partido> findByEstadoActual(String estadoActual);
     
+    List<Partido> findByEstadoActualIn(List<String> estados);
+    
     List<Partido> findByTipoDeporte(TipoDeporte tipoDeporte);
     
     List<Partido> findByOrganizadorId(Long organizadorId);

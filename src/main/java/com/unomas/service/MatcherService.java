@@ -30,10 +30,11 @@ public class MatcherService {
      * 
      * @param usuarioId ID del usuario que se une
      * @param partidoId ID del partido al que se une
+     * @return El partido actualizado después de unir al usuario
      * @throws ResourceNotFoundException si el usuario o partido no existe
      * @throws IllegalStateException si el partido está completo o el usuario ya está unido
      */
-    public void unirseAPartido(int usuarioId, int partidoId) {
+    public Partido unirseAPartido(int usuarioId, int partidoId) {
         Usuario usuario = usuarioService.obtenerUsuarioEntity((long) usuarioId);
         Partido partido = partidoService.obtenerPartidoEntity((long) partidoId);
         
@@ -51,16 +52,14 @@ public class MatcherService {
         
         usuario.unirseAPartido(partido);
         
-        // Reconfigurar observers antes de agregar jugador
-        partido.getJugadores().add(usuario);
-        partidoService.reconfigurarObservers(partido);
-        partido.getJugadores().remove(usuario);
-        
         // Agregar jugador (puede disparar cambio de estado y notificaciones)
         partido.agregarJugador(usuario);
         
+        // Reconfigurar observers después de agregar el jugador para incluirlo en las notificaciones
+        partidoService.reconfigurarObservers(partido);
+        
         usuarioService.guardarUsuario(usuario);
-        partidoService.guardarPartido(partido);
+        return partidoService.guardarPartido(partido);
     }
 
     /**
@@ -68,9 +67,10 @@ public class MatcherService {
      * 
      * @param usuarioId ID del usuario que confirma
      * @param partidoId ID del partido a confirmar
+     * @return El partido actualizado después de confirmar al usuario
      */
-    public void confirmarPartido(int usuarioId, int partidoId) {
-        unirseAPartido(usuarioId, partidoId);
+    public Partido confirmarPartido(int usuarioId, int partidoId) {
+        return unirseAPartido(usuarioId, partidoId);
     }
 
     /**
@@ -78,9 +78,10 @@ public class MatcherService {
      * 
      * @param usuarioId ID del usuario que se baja
      * @param partidoId ID del partido del que se baja
+     * @return El partido actualizado después de remover al usuario
      * @throws IllegalStateException si el partido está confirmado, cancelado o el usuario no está en el partido
      */
-    public void bajarseDePartido(int usuarioId, int partidoId) {
+    public Partido bajarseDePartido(int usuarioId, int partidoId) {
         Usuario usuario = usuarioService.obtenerUsuarioEntity((long) usuarioId);
         Partido partido = partidoService.obtenerPartidoEntity((long) partidoId);
         
@@ -103,14 +104,13 @@ public class MatcherService {
         usuario.bajarseDePartido(partido);
         partido.removerJugador(usuario);
         
-        // Forzar a Hibernate a detectar el cambio de estadoActual
-        // Haciendo un set explícito desde el servicio
-        if (!partido.estaCompleto() && "PARTIDO_ARMADO".equals(partido.getEstadoActual())) {
-            partido.setEstadoActual("BUSCANDO_JUGADORES");
-        }
+        // Reconfigurar observers después de remover el jugador
+        partidoService.reconfigurarObservers(partido);
         
-        // Guardar cambios (partido primero para asegurar que el cambio de estado se persiste)
+        // Guardar cambios
         partidoService.guardarPartido(partido);
         usuarioService.guardarUsuario(usuario);
+        
+        return partido;
     }
 }
