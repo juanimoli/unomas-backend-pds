@@ -16,6 +16,8 @@ import com.unomas.strategy.emparejamiento.EmparejamientoStrategy;
 import com.unomas.strategy.emparejamiento.TipoEstrategia;
 import com.unomas.strategy.notificacion.EmailNotificationStrategy;
 import com.unomas.strategy.notificacion.PushNotificationStrategy;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,9 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class PartidoService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private PartidoRepository partidoRepository;
@@ -277,7 +282,9 @@ public class PartidoService {
      * Guarda un partido en la base de datos
      */
     protected Partido guardarPartido(Partido partido) {
-        return partidoRepository.save(partido);
+        Partido saved = partidoRepository.save(partido);
+        entityManager.flush(); // Forzar escritura a BD
+        return saved;
     }
     
     /**

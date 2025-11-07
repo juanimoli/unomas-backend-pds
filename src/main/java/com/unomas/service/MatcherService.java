@@ -78,6 +78,7 @@ public class MatcherService {
      * 
      * @param usuarioId ID del usuario que se baja
      * @param partidoId ID del partido del que se baja
+     * @throws IllegalStateException si el partido está confirmado, cancelado o el usuario no está en el partido
      */
     public void bajarseDePartido(int usuarioId, int partidoId) {
         Usuario usuario = usuarioService.obtenerUsuarioEntity((long) usuarioId);
@@ -89,10 +90,27 @@ public class MatcherService {
             );
         }
         
-        usuario.bajarseDePartido(partido);
-        partido.getJugadores().remove(usuario);
+        // Validar que el partido esté en un estado donde se permita bajarse
+        String estadoActual = partido.getEstadoActual();
+        if ("CONFIRMADO".equals(estadoActual) || "EN_JUEGO".equals(estadoActual) || 
+            "FINALIZADO".equals(estadoActual) || "CANCELADO".equals(estadoActual)) {
+            throw new IllegalStateException(
+                String.format("No se puede bajar de un partido en estado %s", estadoActual)
+            );
+        }
         
-        usuarioService.guardarUsuario(usuario);
+        // Remover jugador (puede cambiar el estado del partido)
+        usuario.bajarseDePartido(partido);
+        partido.removerJugador(usuario);
+        
+        // Forzar a Hibernate a detectar el cambio de estadoActual
+        // Haciendo un set explícito desde el servicio
+        if (!partido.estaCompleto() && "PARTIDO_ARMADO".equals(partido.getEstadoActual())) {
+            partido.setEstadoActual("BUSCANDO_JUGADORES");
+        }
+        
+        // Guardar cambios (partido primero para asegurar que el cambio de estado se persiste)
         partidoService.guardarPartido(partido);
+        usuarioService.guardarUsuario(usuario);
     }
 }

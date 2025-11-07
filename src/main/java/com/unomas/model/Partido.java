@@ -50,7 +50,7 @@ public class Partido implements IObservable {
     @Column(nullable = false)
     private LocalDateTime fechaHora;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "estado_actual")
     private String estadoActual;
 
     @ManyToOne
@@ -102,7 +102,7 @@ public class Partido implements IObservable {
     }
 
     @PostLoad
-    protected void onLoad() {
+    public void onLoad() {
         // Restaurar el estado desde la base de datos
         this.estado = EstadoPartido.fromString(this.estadoActual);
     }
@@ -149,6 +149,23 @@ public class Partido implements IObservable {
             if (jugadores.size() >= cantidadJugadoresRequeridos) {
                 estado.equipoCompleto(this);
             }
+        }
+    }
+
+    /**
+     * Remueve un jugador del partido
+     * Si el equipo deja de estar completo, vuelve a BUSCANDO_JUGADORES
+     */
+    public void removerJugador(Usuario usuario) {
+        boolean estabaCompleto = estaCompleto();
+        jugadores.remove(usuario);
+        
+        // Si el partido estaba en PARTIDO_ARMADO y ahora no está completo,
+        // volver a BUSCANDO_JUGADORES
+        if (estabaCompleto && !estaCompleto() && "PARTIDO_ARMADO".equals(getEstadoActual())) {
+            this.estado = new BuscandoJugadoresState();
+            setEstadoActual("BUSCANDO_JUGADORES");
+            notificarObservadores();
         }
     }
 
