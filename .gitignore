@@ -55,7 +55,13 @@ out/
 
 # Application specific
 firebase-service-account.json
+firebase-service-account.json.json
 application-local.properties
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # H2 Database
 *.db
