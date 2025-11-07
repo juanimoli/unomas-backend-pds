@@ -6,19 +6,6 @@ Sistema backend REST API para gestión de partidos deportivos con emparejamiento
 **Tecnología**: Java 17 + Spring Boot 3.2.0  
 **Patrones**: 6 patrones de diseño implementados
 
-## 🚀 Inicio Rápido
-
-```bash
-# Verificar requisitos
-./check-requirements.sh
-
-# Iniciar backend
-./quick-start.sh
-
-# O usar menú interactivo
-./manage.sh
-```
-
 **URLs**:
 - API: http://localhost:8080
 - Swagger: http://localhost:8080/swagger-ui.html
